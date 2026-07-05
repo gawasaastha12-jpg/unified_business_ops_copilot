@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, animate } from "framer-motion";
-import { RefreshCw, ChevronDown, ChevronUp, Check, X, ArrowLeft, Mail, Megaphone, TrendingUp, Settings } from "lucide-react";
+import { 
+  RefreshCw, ChevronDown, ChevronUp, Check, X, ArrowLeft, Mail, 
+  Megaphone, TrendingUp, Settings, Search, Bell, User, Plus, 
+  Menu, Download, AlertTriangle, FileSpreadsheet, FileDown, Activity, LogOut
+} from "lucide-react";
 import { toast } from "sonner";
 
 // Types
@@ -56,163 +60,82 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span>{displayValue}</span>;
 }
 
-// Command Bar
-function CommandBar({ 
-  onRefresh, 
-  isLoading, 
-  onBackToLanding 
-}: { 
-  onRefresh: () => void; 
-  isLoading: boolean;
-  onBackToLanding: () => void;
-}) {
-  const [isHealthy, setIsHealthy] = useState(true);
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/events`);
-        setIsHealthy(res.ok);
-      } catch {
-        setIsHealthy(false);
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
+// Sparkline Component
+function Sparkline({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const width = 80;
+  const height = 24;
+  const max = Math.max(...data, 1);
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (val / max) * height + 2;
+    return `${x},${y}`;
+  }).join(" ");
   return (
-    <div className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onBackToLanding}
-          className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-gray-400 hover:text-white transition-colors border border-white/10 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Landing
-        </motion.button>
-        <div className="h-4 w-px bg-white/10" />
-        <h1 className="text-lg font-black tracking-tight text-white uppercase">Ops Copilot</h1>
-        <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-          <div className={`w-2 h-2 rounded-full ${isHealthy ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-            {isHealthy ? "All systems go" : "Houston, we have a problem"}
-          </span>
-        </div>
-      </div>
-
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onRefresh}
-        disabled={isLoading}
-        title="Give it a nudge"
-        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[18px] transition-all disabled:opacity-50 cursor-pointer"
-      >
-        <RefreshCw className={`w-4 h-4 text-white ${isLoading ? "animate-spin" : ""}`} />
-      </motion.button>
-    </div>
+    <svg width={width} height={height} className="overflow-visible opacity-60 text-indigo-400">
+      <polyline
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        points={points}
+      />
+    </svg>
   );
 }
 
-// Stats Bar
-function StatsBar({ stats }: { stats: DigestResponse["stats"] }) {
-  const kpis = [
-    { label: "Total Events", value: stats.total_events, color: "from-sky-400 to-cyan-300" },
-    {
-      label: "Pending Approval",
-      value: stats.by_status.pending_approval || 0,
-      color: "from-amber-400 to-rose-400"
-    },
-    {
-      label: "Flagged Anomalies",
-      value: stats.by_status.flagged || 0,
-      color: "from-rose-400 to-orange-400"
-    },
-    {
-      label: "Ready / Resolved",
-      value: (stats.by_status.ready_to_send || 0) + (stats.by_status.resolved || 0),
-      color: "from-emerald-400 to-lime-300"
-    },
-  ];
+// Donut Distribution Chart
+function DistributionDonut({ stats }: { stats: Record<string, number> }) {
+  const data = Object.entries(stats).map(([key, val]) => ({
+    name: key === 'customer_care' ? 'Customer Care' :
+          key === 'social' ? 'Social Media' :
+          key === 'finance' ? 'Finance Anomaly' : 'General Ops',
+    value: val,
+    color: key === 'customer_care' ? '#0ea5e9' :
+           key === 'social' ? '#8b5cf6' :
+           key === 'finance' ? '#10b981' : '#64748b'
+  })).filter(item => item.value > 0);
 
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  if (total === 0) return <div className="text-xs text-gray-500 py-4 text-center">No active distribution</div>;
+
+  let accumulatedPercent = 0;
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-6 py-8 bg-gray-950 relative overflow-hidden">
-      {/* Background glow blobs */}
-      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-purple-500/5 blur-[120px] rounded-full pointer-events-none" />
-
-      {kpis.map((kpi, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 15, delay: i * 0.1 }}
-          whileHover={{ y: -4, scale: 1.01 }}
-          className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[28px] p-6 shadow-2xl relative overflow-hidden group hover:border-white/20 transition-all duration-300"
-        >
-          {/* subtle radial highlight */}
-          <div className="absolute inset-0 bg-radial from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          
-          <span className={`text-7xl md:text-8xl font-black bg-gradient-to-r ${kpi.color} bg-clip-text text-transparent tracking-tighter block`}>
-            <AnimatedNumber value={kpi.value} />
-          </span>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-gray-500 font-bold mt-2 text-left">{kpi.label}</p>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-// Management Digest
-function DigestPanel({ digest }: { digest: DigestResponse }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white/[0.03] backdrop-blur-xl border border-blue-500/20 rounded-[28px] p-6 mb-8 shadow-2xl relative overflow-hidden"
-    >
-      <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 blur-[100px] rounded-full pointer-events-none" />
-
-      <h3 className="text-xs uppercase tracking-widest font-black text-blue-400 mb-3">Management Digest</h3>
-      <p className="text-xl font-medium text-gray-200 mb-6 leading-relaxed max-w-4xl">{digest.digest_paragraph}</p>
-
-      {digest.cross_domain_patterns.length > 0 ? (
-        <div className="space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Cross-Domain Patterns</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {digest.cross_domain_patterns.map((pattern, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white/[0.02] border border-purple-500/20 rounded-3xl p-4 shadow-xl border-l-4 border-l-purple-500"
-              >
-                <p className="text-sm font-medium text-gray-300 mb-3">{pattern.reason}</p>
-                <div className="flex gap-2 flex-wrap">
-                  {pattern.related_event_ids.map((id) => (
-                    <span
-                      key={id}
-                      className="px-2.5 py-1 bg-purple-500/10 text-purple-300 text-xs rounded-full border border-purple-500/20 font-semibold"
-                    >
-                      Event #{id}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+    <div className="flex items-center gap-6 py-2">
+      <svg width="80" height="80" viewBox="0 0 36 36" className="transform -rotate-90 flex-shrink-0">
+        <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
+        {data.map((item, i) => {
+          const percent = (item.value / total) * 100;
+          const strokeDasharray = `${percent} ${100 - percent}`;
+          const strokeDashoffset = 100 - accumulatedPercent;
+          accumulatedPercent += percent;
+          return (
+            <circle
+              key={i}
+              cx="18"
+              cy="18"
+              r="15.915"
+              fill="transparent"
+              stroke={item.color}
+              strokeWidth="3.2"
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+            />
+          );
+        })}
+      </svg>
+      <div className="space-y-1.5 flex-1 min-w-0">
+        {data.map((item, i) => (
+          <div key={i} className="flex items-center justify-between text-[10px] text-gray-400 font-medium">
+            <div className="flex items-center gap-1.5 truncate">
+              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="truncate">{item.name}</span>
+            </div>
+            <span className="font-mono text-gray-300 font-bold">{Math.round((item.value / total) * 100)}%</span>
           </div>
-        </div>
-      ) : (
-        <p className="text-sm text-gray-500 font-medium">All clear — nothing connecting the dots right now.</p>
-      )}
-    </motion.div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -235,17 +158,16 @@ function FireButton({
     setPrefersReducedMotion(mediaQuery.matches);
   }, []);
 
-  // Generate ~16 fire flame particles with staggered positions, delays, durations, and sizes
   const flames = Array.from({ length: 16 }).map((_, i) => {
     const left = `${Math.random() * 90 + 5}%`;
     const delay = `${Math.random() * 1.5}s`;
     const duration = `${0.6 + Math.random() * 0.8}s`;
     const size = `${Math.random() * 12 + 6}px`;
     const colors = [
-      'rgba(249, 115, 22, 0.65)', // orange
-      'rgba(239, 68, 68, 0.65)',  // red
-      'rgba(245, 158, 11, 0.7)',  // amber
-      'rgba(253, 224, 71, 0.75)', // yellow
+      'rgba(249, 115, 22, 0.65)',
+      'rgba(239, 68, 68, 0.65)',
+      'rgba(245, 158, 11, 0.7)',
+      'rgba(253, 224, 71, 0.75)',
     ];
     const color = colors[i % colors.length];
     return { id: i, left, delay, duration, size, color };
@@ -276,13 +198,9 @@ function FireButton({
         }
       `}</style>
 
-      {/* Roaring fire visual overlay on hover */}
       {!prefersReducedMotion && (
         <div className="absolute inset-0 bg-gray-950 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end">
-          {/* Base heat glow */}
           <div className="absolute inset-0 bg-gradient-to-t from-amber-600/40 via-red-600/20 to-transparent" />
-          
-          {/* Flame particles rising up */}
           {flames.map((f) => (
             <div
               key={f.id}
@@ -302,7 +220,6 @@ function FireButton({
         </div>
       )}
 
-      {/* Button content */}
       <span className="relative z-10 drop-shadow-md">
         {children}
       </span>
@@ -310,8 +227,109 @@ function FireButton({
   );
 }
 
-// Simulate & Process Panel
-function SimulatePanel({ onProcessed }: { onProcessed: () => void }) {
+// Runway Button Component (Used for Header "+ New Event")
+interface RunwayButtonProps {
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function RunwayButton({ onClick, children, className = "" }: RunwayButtonProps) {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+  }, []);
+
+  const planeVariants = {
+    initial: { x: -45, y: -8, scale: 1.4, opacity: 0, rotate: 15 },
+    hover: { 
+      x: [ -45, 10, 55, 260 ], 
+      y: [ -8, 0, 0, 0 ], 
+      scale: [ 1.4, 0.9, 0.9, 0.9 ], 
+      opacity: [ 0, 1, 1, 0 ],
+      rotate: [ 15, 0, 0, 0 ],
+      transition: {
+        duration: 1.6,
+        times: [0, 0.35, 0.8, 1.0],
+        ease: "easeOut",
+        repeat: Infinity,
+        repeatDelay: 0.6
+      }
+    }
+  };
+
+  const PlaneIcon = ({ className = "" }: { className?: string }) => (
+    <svg 
+      className={className} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 1 0-3-3L13 8 4.8 6.2c-.5-.1-1 .1-1.3.5l-.3.3c-.4.4-.4 1.1 0 1.5L9 12l-4 4H3l-1 1v2l1 1h2l1-1v-2l4-4 3.7 5.7c.4.4 1.1.4 1.5 0l.3-.3c.4-.3.6-.8.5-1.3Z" />
+    </svg>
+  );
+
+  return (
+    <motion.button
+      whileHover="hover"
+      initial="initial"
+      whileTap={{ scale: 0.97 }}
+      onClick={onClick}
+      className={`relative px-8 py-2.5 bg-gradient-to-r from-violet-600 to-blue-500 text-white font-extrabold uppercase tracking-wider text-xs rounded-full shadow-[0_12px_32px_rgba(139,92,246,0.35)] hover:shadow-[0_16px_48px_rgba(139,92,246,0.55)] transition-all cursor-pointer overflow-hidden group select-none ${className}`}
+    >
+      <style>{`
+        @keyframes runway-move {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-20px); }
+        }
+      `}</style>
+
+      {!prefersReducedMotion && (
+        <div className="absolute inset-0 bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center overflow-hidden pointer-events-none">
+          <div className="absolute inset-x-0 top-1.5 h-[1px] bg-slate-700/50" />
+          <div className="absolute inset-x-0 bottom-1.5 h-[1px] bg-slate-700/50" />
+          <div 
+            className="w-[200%] h-[2px] absolute top-1/2 -translate-y-1/2"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(90deg, #eab308, #eab308 10px, transparent 10px, transparent 20px)',
+              animation: 'runway-move 0.6s linear infinite'
+            }}
+          />
+        </div>
+      )}
+
+      <span className="relative z-10 block transition-transform duration-300 group-hover:translate-x-3 text-center">
+        {children}
+      </span>
+
+      {!prefersReducedMotion && (
+        <motion.div
+          variants={planeVariants}
+          className="absolute z-20 top-1/2 -translate-y-1/2 left-0 pointer-events-none text-white"
+          style={{ originY: "50%" }}
+        >
+          <PlaneIcon className="w-3.5 h-3.5 transform rotate-45" />
+        </motion.div>
+      )}
+    </motion.button>
+  );
+}
+
+// Simulate Modal Wrapper
+function SimulateModal({ 
+  isOpen, 
+  onClose, 
+  onProcessed 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onProcessed: () => void; 
+}) {
   const [content, setContent] = useState("");
   const [source, setSource] = useState("email");
   const [isLoading, setIsLoading] = useState(false);
@@ -352,6 +370,7 @@ function SimulatePanel({ onProcessed }: { onProcessed: () => void }) {
       setSource("email");
       setStep(null);
       onProcessed();
+      onClose();
     } catch (error) {
       toast.error("Error processing event");
       console.error(error);
@@ -362,474 +381,73 @@ function SimulatePanel({ onProcessed }: { onProcessed: () => void }) {
   };
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      onSubmit={handleSubmit}
-      className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[28px] p-6 mb-8 shadow-2xl"
-    >
-      <h3 className="text-sm uppercase tracking-widest font-black text-white mb-4">Drop something in</h3>
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
-            Source Channel
-          </label>
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            disabled={isLoading}
-            className="w-full bg-gray-900 border border-white/10 rounded-[18px] px-4 py-2.5 text-white disabled:opacity-50 focus:outline-none focus:border-blue-500 transition-colors"
-          >
-            <option value="email">Email Inbox</option>
-            <option value="twitter">Twitter / X Mention</option>
-            <option value="transaction_csv">Transaction (CSV upload)</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
-            Raw Payload Content
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            disabled={isLoading}
-            placeholder="e.g. refund wireless earbuds order, or complaint about dead battery..."
-            className="w-full bg-gray-900 border border-white/10 rounded-[18px] px-4 py-3 text-white font-mono text-sm disabled:opacity-50 h-24 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
-        </div>
 
-        <FireButton disabled={isLoading} isLoading={isLoading} step={step}>
-          {isLoading ? step || "Processing..." : "Fire it off"}
-        </FireButton>
-      </div>
-    </motion.form>
-  );
-}
-
-// Activity Feed (Restructured)
-function ActivityFeed({ events, onRefresh }: { events: Event[]; onRefresh: () => void }) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [history, setHistory] = useState<Record<number, HistoryEntry[]>>({});
-  const [loadingHistory, setLoadingHistory] = useState<Set<number>>(new Set());
-  const [filterDomain, setFilterDomain] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<number | null>(null);
-
-  const domains = [
-    { id: "customer_care", name: "Customer Care", icon: "📧", color: "customer_care" },
-    { id: "social", name: "Social Media", icon: "📣", color: "social" },
-    { id: "finance", name: "Finance Anomaly", icon: "💰", color: "finance" },
-    { id: "general", name: "General Ops", icon: "⚙️", color: "general" },
-  ];
-
-  const domainColors: Record<string, string> = {
-    customer_care: "bg-blue-500",
-    social: "bg-violet-500",
-    finance: "bg-emerald-500",
-    general: "bg-slate-500",
-  };
-
-  const domainIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-    customer_care: Mail,
-    social: Megaphone,
-    finance: TrendingUp,
-    general: Settings,
-  };
-
-  const domainColorConfig: Record<string, { bg: string; border: string; text: string; glow: string; gradient: string; shadow: string }> = {
-    customer_care: {
-      bg: "bg-blue-500/8 hover:bg-blue-500/15",
-      border: "border-blue-500/30",
-      text: "text-blue-300",
-      glow: "bg-blue-500/20",
-      gradient: "from-blue-500 to-cyan-400",
-      shadow: "shadow-blue-500/20",
-    },
-    social: {
-      bg: "bg-violet-500/8 hover:bg-violet-500/15",
-      border: "border-violet-500/30",
-      text: "text-violet-300",
-      glow: "bg-violet-500/20",
-      gradient: "from-violet-500 to-pink-500",
-      shadow: "shadow-violet-500/20",
-    },
-    finance: {
-      bg: "bg-emerald-500/8 hover:bg-emerald-500/15",
-      border: "border-emerald-500/30",
-      text: "text-emerald-300",
-      glow: "bg-emerald-500/20",
-      gradient: "from-emerald-500 to-lime-400",
-      shadow: "shadow-emerald-500/20",
-    },
-    general: {
-      bg: "bg-slate-500/8 hover:bg-slate-500/15",
-      border: "border-slate-500/30",
-      text: "text-slate-400",
-      glow: "bg-slate-500/20",
-      gradient: "from-slate-500 to-gray-400",
-      shadow: "shadow-slate-500/20",
-    },
-  };
-
-  const domainBorderHex: Record<string, string> = {
-    customer_care: "#3b82f6",
-    social: "#8b5cf6",
-    finance: "#10b981",
-    general: "#64748b",
-  };
-
-  const urgencyColors: Record<string, string> = {
-    low: "bg-green-500/20 text-green-300 border border-green-500/20",
-    medium: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/20",
-    high: "bg-red-500/20 text-red-300 border border-red-500/20",
-  };
-
-  const statusTabs = [
-    { id: null, name: "All" },
-    { id: "pending", name: "Pending" },
-    { id: "pending_approval", name: "Pending Approval" },
-    { id: "approved", name: "Approved" },
-    { id: "rejected", name: "Rejected" },
-    { id: "flagged", name: "Flagged" },
-    { id: "ready_to_send", name: "Ready to Send" },
-  ];
-
-  // Domain computation helpers
-  const getDomainStats = (domainName: string) => {
-    const domainEvents = events.filter((e) => e.domain === domainName);
-    const count = domainEvents.length;
-
-    const statusCounts: Record<string, number> = {};
-    domainEvents.forEach((e) => {
-      statusCounts[e.status] = (statusCounts[e.status] || 0) + 1;
-    });
-
-    const breakdownStr = Object.entries(statusCounts)
-      .map(([status, val]) => {
-        const formatted = status.replace(/_/g, " ");
-        return `${val} ${formatted}`;
-      })
-      .join(" · ");
-
-    return { count, breakdown: breakdownStr || "0 events" };
-  };
-
-  const getStatusCount = (statusId: string | null) => {
-    let filtered = events;
-    if (filterDomain) {
-      filtered = filtered.filter((e) => e.domain === filterDomain);
-    }
-    if (statusId === null) {
-      return filtered.length;
-    }
-    return filtered.filter((e) => e.status === statusId).length;
-  };
-
-  const filteredEvents = events.filter((e) => {
-    if (filterDomain && e.domain !== filterDomain) return false;
-    if (filterStatus && e.status !== filterStatus) return false;
-    return true;
-  });
-
-  const fetchHistory = async (eventId: number) => {
-    if (history[eventId]) return;
-
-    setLoadingHistory((prev) => new Set(prev).add(eventId));
-    try {
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/history`);
-      if (res.ok) {
-        const data = await res.json();
-        setHistory((prev) => ({ ...prev, [eventId]: data }));
-      }
-    } catch (error) {
-      console.error("Failed to fetch history:", error);
-    } finally {
-      setLoadingHistory((prev) => {
-        const next = new Set(prev);
-        next.delete(eventId);
-        return next;
-      });
-    }
-  };
-
-  const handleApprove = async (eventId: number, newStatus: string) => {
-    setApprovingId(eventId);
-    try {
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (res.ok) {
-        toast.success(`Event marked as ${newStatus}`);
-        onRefresh();
-      } else {
-        toast.error("Failed to update status");
-      }
-    } catch (error) {
-      toast.error("Error updating status");
-      console.error(error);
-    } finally {
-      setApprovingId(null);
-    }
-  };
-
-  return (
-    <div className="space-y-8">
-      {/* 1. Domain Boxes (Top Level Grid) */}
-      <div>
-        <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500 mb-3">Filter by Domain</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {domains.map((dom) => {
-            const stats = getDomainStats(dom.id);
-            const isSelected = filterDomain === dom.id;
-            const colors = domainColorConfig[dom.id];
-            const IconComponent = domainIcons[dom.id] || Settings;
-            
-            return (
-              <motion.button
-                key={dom.id}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setFilterDomain(isSelected ? null : dom.id)}
-                className={`relative overflow-hidden text-left p-5 rounded-[28px] border transition-all duration-300 ${
-                  isSelected
-                    ? `${colors.bg} ${colors.border} shadow-lg ${colors.shadow}`
-                    : "bg-white/[0.03] border-white/10 hover:border-white/20"
-                } backdrop-blur-xl cursor-pointer`}
-              >
-                {isSelected && (
-                  <div className={`absolute -right-8 -bottom-8 w-24 h-24 ${colors.glow} blur-2xl rounded-full`} />
-                )}
-                
-                <div className="flex justify-between items-start mb-3">
-                  <div className={`${
-                    dom.id === 'customer_care' ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
-                    dom.id === 'social' ? "bg-violet-500/10 border-violet-500/20 text-violet-400" :
-                    dom.id === 'finance' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                    "bg-slate-500/10 border-slate-500/20 text-slate-400"
-                  } border rounded-full w-12 h-12 flex items-center justify-center`}>
-                    <IconComponent className="w-6 h-6 stroke-[1.5]" />
-                  </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isSelected ? `${colors.bg} ${colors.text}` : "bg-white/5 text-gray-400"}`}>
-                    <AnimatedNumber value={stats.count} /> events
-                  </span>
-                </div>
-                
-                <h5 className="font-extrabold text-white text-base mb-1">{dom.name}</h5>
-                <p className="text-xs text-gray-400 leading-normal font-light truncate">
-                  {stats.breakdown || "0 events"}
-                </p>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. Status Tabs (Tactile Segmented Pill) */}
-      <div>
-        <div className="flex justify-between items-center mb-3">
-          <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">Filter by Status</h4>
-          {filterDomain && (
+          <motion.form
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            onSubmit={handleSubmit}
+            className="bg-gray-905 bg-slate-900/95 border border-white/10 rounded-[28px] p-6 w-full max-w-lg shadow-2xl relative z-10"
+          >
             <button 
-              onClick={() => setFilterDomain(null)} 
-              className="text-[10px] uppercase tracking-widest text-blue-400 hover:text-blue-300 font-bold"
+              type="button" 
+              onClick={onClose} 
+              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
             >
-              Clear Domain Filter
+              ✕
             </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5 p-1.5 bg-white/[0.03] border border-white/10 rounded-[20px] backdrop-blur-xl max-w-fit">
-          {statusTabs.map((tab) => {
-            const count = getStatusCount(tab.id);
-            const isSelected = filterStatus === tab.id;
-            return (
-              <button
-                key={tab.id ?? "all"}
-                onClick={() => setFilterStatus(tab.id)}
-                className="relative px-4 py-2 rounded-[18px] text-xs font-bold transition-all duration-300 z-10 flex items-center gap-2 cursor-pointer"
-                style={{
-                  color: isSelected ? "#ffffff" : "#9ca3af",
-                }}
-              >
-                {isSelected && (
-                  <motion.div
-                    layoutId="active-status-pill"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-[18px] -z-10"
-                  />
-                )}
-                <span>{tab.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? "bg-white/10 text-white" : "bg-gray-800 text-gray-500"
-                }`}>
-                  <AnimatedNumber value={count} />
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+            <h3 className="text-base uppercase tracking-widest font-black text-white mb-4">Simulate New Event</h3>
 
-      {/* 3. Event List */}
-      <div className="space-y-3">
-        <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">
-          Events ({filteredEvents.length})
-        </h4>
-        <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {filteredEvents.map((event) => (
-              <motion.div
-                key={event.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white/[0.02] border border-white/5 rounded-[28px] overflow-hidden shadow-xl hover:border-white/10 transition-colors"
-              >
-                {/* Collapsed row header */}
-                <button
-                  onClick={() => {
-                    setExpandedId(expandedId === event.id ? null : event.id);
-                    if (expandedId !== event.id) {
-                      fetchHistory(event.id);
-                    }
-                  }}
-                  className="w-full px-5 py-4 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors border-l-4 text-left cursor-pointer"
-                  style={{
-                    borderLeftColor: domainBorderHex[event.domain || "general"],
-                  }}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+                  Source Channel
+                </label>
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full bg-gray-950 border border-white/10 rounded-[18px] px-4 py-2.5 text-white disabled:opacity-50 focus:outline-none focus:border-blue-500 transition-colors"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs font-mono text-gray-500 font-semibold">
-                        #{event.id}
-                      </span>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-extrabold bg-gradient-to-r ${domainColorConfig[event.domain || "general"].gradient} bg-clip-text text-transparent`}
-                      >
-                        {event.domain || "general"}
-                      </span>
-                      {event.urgency && (
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-extrabold ${
-                            urgencyColors[event.urgency]
-                          }`}
-                        >
-                          {event.urgency}
-                        </span>
-                      )}
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-extrabold bg-white/5 text-gray-300 border border-white/5">
-                        {event.status.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-300 font-light truncate max-w-2xl">
-                      {event.raw_content}
-                    </p>
-                  </div>
-                  {expandedId === event.id ? (
-                    <ChevronUp className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  )}
-                </button>
+                  <option value="email">Email Inbox</option>
+                  <option value="twitter">Twitter / X Mention</option>
+                  <option value="transaction_csv">Transaction (CSV upload)</option>
+                </select>
+              </div>
 
-                {/* Expanded view */}
-                <AnimatePresence>
-                  {expandedId === event.id && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="bg-white/[0.01] px-5 pb-5 border-t border-white/5 space-y-4 pt-4"
-                    >
-                      {/* Raw Content */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
-                          Raw Content Payload
-                        </h4>
-                        <p className="text-sm text-gray-300 bg-gray-950/80 p-4 rounded-2xl border border-white/5 font-mono leading-relaxed">
-                          {event.raw_content}
-                        </p>
-                      </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+                  Raw Payload Content
+                </label>
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="e.g. refund wireless earbuds order, or complaint about dead battery..."
+                  className="w-full bg-gray-950 border border-white/10 rounded-[18px] px-4 py-3 text-white font-mono text-sm disabled:opacity-50 h-28 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                />
+              </div>
 
-                      {/* Agent Response */}
-                      {event.agent_response && (
-                        <div>
-                          <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
-                            Copilot Response Actions
-                          </h4>
-                          <p className="text-sm text-gray-300 bg-gray-950/80 p-4 rounded-2xl border border-white/5 font-mono leading-relaxed">
-                            {event.agent_response}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Action buttons (Approve / Reject) */}
-                      {event.status === "pending_approval" && (
-                        <div className="flex gap-3">
-                          <motion.button
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleApprove(event.id, "approved")}
-                            disabled={approvingId === event.id}
-                            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(16,185,129,0.4)] hover:shadow-[0_16px_40px_rgba(16,185,129,0.5)] transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            <Check className="w-4 h-4" />
-                            Approve Actions
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleApprove(event.id, "rejected")}
-                            disabled={approvingId === event.id}
-                            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-orange-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(244,63,94,0.4)] hover:shadow-[0_16px_40px_rgba(244,63,94,0.5)] transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                            Reject Actions
-                          </motion.button>
-                        </div>
-                      )}
-
-                      {/* Status History Timeline */}
-                      {history[event.id] && history[event.id].length > 0 && (
-                        <div className="pt-2 border-t border-white/5">
-                          <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-3">
-                            Status History Timeline
-                          </h4>
-                          <div className="space-y-3 pl-2">
-                            {history[event.id].map((h, i) => (
-                              <div key={i} className="flex items-center gap-3 text-xs text-gray-400">
-                                <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-md shadow-sky-500/50" />
-                                <span className="font-semibold text-gray-300">
-                                  {h.old_status.replace(/_/g, " ")} → {h.new_status.replace(/_/g, " ")}
-                                </span>
-                                <span className="text-gray-500 font-mono text-[10px]">
-                                  {new Date(h.changed_at).toLocaleString()}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {filteredEvents.length === 0 && (
-        <div className="text-center py-12 text-gray-500 font-medium">
-          All clear — no events match these filters.
+              <div className="pt-2">
+                <FireButton disabled={isLoading} isLoading={isLoading} step={step}>
+                  {isLoading ? step || "Processing..." : "Fire it off"}
+                </FireButton>
+              </div>
+            </div>
+          </motion.form>
         </div>
       )}
-    </div>
+    </AnimatePresence>
   );
 }
 
@@ -839,6 +457,121 @@ export default function Dashboard({ onBackToLanding }: { onBackToLanding: () => 
   const [digest, setDigest] = useState<DigestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Layout State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSimulateOpen, setIsSimulateOpen] = useState(false);
+
+  // Filters State
+  const [filterDomain, setFilterDomain] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterDatePreset, setFilterDatePreset] = useState<"today" | "week" | "all">("all");
+  const [filterAnomaliesOnly, setFilterAnomaliesOnly] = useState(false);
+
+  // Detailed Card State
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [history, setHistory] = useState<Record<number, HistoryEntry[]>>({});
+  const [loadingHistory, setLoadingHistory] = useState<Set<number>>(new Set());
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+
+  const domains = [
+    { id: "customer_care", name: "Customer Care", icon: Mail, colorClass: "text-blue-400 border-blue-500/20 bg-blue-500/5", hoverClass: "hover:bg-blue-500/10", activeBorder: "border-blue-500" },
+    { id: "social", name: "Social Media", icon: Megaphone, colorClass: "text-violet-400 border-violet-500/20 bg-violet-500/5", hoverClass: "hover:bg-violet-500/10", activeBorder: "border-violet-500" },
+    { id: "finance", name: "Finance Anomaly", icon: TrendingUp, colorClass: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5", hoverClass: "hover:bg-emerald-500/10", activeBorder: "border-emerald-500" },
+    { id: "general", name: "General Ops", icon: Settings, colorClass: "text-slate-400 border-slate-500/20 bg-slate-500/5", hoverClass: "hover:bg-slate-500/10", activeBorder: "border-slate-500" },
+  ];
+
+  const domainBorderHex: Record<string, string> = {
+    customer_care: "#3b82f6",
+    social: "#8b5cf6",
+    finance: "#10b981",
+    general: "#64748b",
+  };
+
+  const domainGradients: Record<string, string> = {
+    customer_care: "from-blue-500 to-cyan-400",
+    social: "from-violet-500 to-pink-500",
+    finance: "from-emerald-500 to-lime-400",
+    general: "from-slate-500 to-gray-400",
+  };
+
+  const statusIcons: Record<string, string> = {
+    approved: "✅",
+    rejected: "❌",
+    pending: "⚠️",
+    pending_approval: "⚠️",
+    ready_to_send: "📦",
+    flagged: "🚨",
+    resolved: "✔️",
+  };
+
+  const statusColors: Record<string, string> = {
+    approved: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
+    rejected: "bg-rose-500/10 border-rose-500/25 text-rose-400",
+    pending: "bg-amber-500/10 border-amber-500/25 text-amber-400",
+    pending_approval: "bg-amber-500/10 border-amber-500/25 text-amber-400",
+    ready_to_send: "bg-blue-500/10 border-blue-500/25 text-blue-400",
+    flagged: "bg-rose-500/10 border-rose-500/25 text-rose-400 font-extrabold animate-pulse",
+    resolved: "bg-teal-500/10 border-teal-500/25 text-teal-400",
+  };
+
+  const statusBoxConfig: Record<string, { label: string; icon: string; border: string; text: string; bg: string; activeBg: string; activeBorder: string }> = {
+    pending: {
+      label: "Pending",
+      icon: "⚠️",
+      border: "border-amber-500/20",
+      text: "text-amber-400",
+      bg: "bg-amber-500/5 hover:bg-amber-500/10",
+      activeBg: "bg-amber-500/20",
+      activeBorder: "border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+    },
+    pending_approval: {
+      label: "Pending Approval",
+      icon: "⚠️",
+      border: "border-amber-500/20",
+      text: "text-amber-400",
+      bg: "bg-amber-500/5 hover:bg-amber-500/10",
+      activeBg: "bg-amber-500/20",
+      activeBorder: "border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+    },
+    approved: {
+      label: "Approved",
+      icon: "✅",
+      border: "border-emerald-500/20",
+      text: "text-emerald-400",
+      bg: "bg-emerald-500/5 hover:bg-emerald-500/10",
+      activeBg: "bg-emerald-500/20",
+      activeBorder: "border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+    },
+    rejected: {
+      label: "Rejected",
+      icon: "❌",
+      border: "border-rose-500/20",
+      text: "text-rose-400",
+      bg: "bg-rose-500/5 hover:bg-rose-500/10",
+      activeBg: "bg-rose-500/20",
+      activeBorder: "border-rose-500/60 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
+    },
+    flagged: {
+      label: "Flagged",
+      icon: "🚨",
+      border: "border-orange-500/20",
+      text: "text-orange-400",
+      bg: "bg-orange-500/5 hover:bg-orange-500/10",
+      activeBg: "bg-orange-500/20",
+      activeBorder: "border-orange-500/60 shadow-[0_0_12px_rgba(249,115,22,0.2)]"
+    },
+    ready_to_send: {
+      label: "Ready to Send",
+      icon: "📦",
+      border: "border-emerald-500/20",
+      text: "text-emerald-400",
+      bg: "bg-emerald-500/5 hover:bg-emerald-500/10",
+      activeBg: "bg-emerald-500/20",
+      activeBorder: "border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -868,12 +601,135 @@ export default function Dashboard({ onBackToLanding }: { onBackToLanding: () => 
     }
   };
 
+  const fetchHistory = async (eventId: number) => {
+    if (history[eventId]) return;
+    setLoadingHistory((prev) => new Set(prev).add(eventId));
+    try {
+      const res = await fetch(`${API_BASE}/api/events/${eventId}/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistory((prev) => ({ ...prev, [eventId]: data }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setLoadingHistory((prev) => {
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+    }
+  };
+
+  const handleApprove = async (eventId: number, newStatus: string) => {
+    setApprovingId(eventId);
+    try {
+      const res = await fetch(`${API_BASE}/api/events/${eventId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (res.ok) {
+        toast.success(`Event marked as ${newStatus}`);
+        fetchData();
+      } else {
+        toast.error("Failed to update status");
+      }
+    } catch (error) {
+      toast.error("Error updating status");
+      console.error(error);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
 
+  // Filter Computation
+  const filteredEvents = events.filter((e) => {
+    // 1. Sidebar Domain filter
+    if (filterDomain && e.domain !== filterDomain) return false;
+    
+    // 2. Dropdown Status filter
+    if (filterStatus && e.status !== filterStatus) return false;
+
+    // 3. Search text match
+    if (filterSearch) {
+      const term = filterSearch.toLowerCase();
+      const contentMatch = e.raw_content.toLowerCase().includes(term);
+      const responseMatch = e.agent_response ? e.agent_response.toLowerCase().includes(term) : false;
+      if (!contentMatch && !responseMatch) return false;
+    }
+
+    // 4. Anomalies-only toggle
+    if (filterAnomaliesOnly) {
+      const isAnomaly = e.status === "flagged" || e.urgency === "high";
+      if (!isAnomaly) return false;
+    }
+
+    // 5. Date Presets filter
+    if (filterDatePreset !== "all") {
+      const eventTime = new Date(e.created_at).getTime();
+      const now = Date.now();
+      if (filterDatePreset === "today") {
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (now - eventTime > oneDay) return false;
+      } else if (filterDatePreset === "week") {
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        if (now - eventTime > oneWeek) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // KPI Sparklines Generation
+  const getSparklineBins = (filterFn?: (e: Event) => boolean) => {
+    const list = filterFn ? events.filter(filterFn) : events;
+    const bins = Array(7).fill(0);
+    list.forEach(e => {
+      const day = new Date(e.created_at).getDay();
+      bins[day] = (bins[day] || 0) + 1;
+    });
+    return bins;
+  };
+
+  // CSV Export Generator
+  const handleExportCSV = () => {
+    if (filteredEvents.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const headers = ["ID", "Domain", "Status", "Urgency", "Raw Content", "Agent Response", "Created At"];
+    const rows = filteredEvents.map(e => [
+      e.id,
+      e.domain || "general",
+      e.status,
+      e.urgency || "low",
+      `"${e.raw_content.replace(/"/g, '""')}"`,
+      e.agent_response ? `"${e.agent_response.replace(/"/g, '""')}"` : "",
+      e.created_at
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `events_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV export downloaded successfully!");
+  };
+
   return (
-    <div className="bg-gray-950 text-white min-h-screen relative">
+    <div className="bg-gray-950 text-white min-h-screen flex flex-col relative overflow-hidden">
       {/* Film grain noise overlay */}
       <div 
         className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] mix-blend-overlay"
@@ -884,44 +740,517 @@ export default function Dashboard({ onBackToLanding }: { onBackToLanding: () => 
         }}
       />
 
-      <CommandBar onRefresh={fetchData} isLoading={isLoading} onBackToLanding={onBackToLanding} />
-      
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-rose-950/40 border border-rose-500/30 text-rose-300 px-6 py-4 mx-6 mt-6 rounded-3xl flex items-center justify-between shadow-lg"
-        >
-          <span className="font-semibold text-sm">{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="text-rose-400 hover:text-rose-300 font-bold"
-          >
-            ✕
-          </button>
-        </motion.div>
-      )}
-      
-      {digest && <StatsBar stats={digest.stats} />}
-      
-      {!digest && !error && (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-500 gap-3 font-semibold">
-          <div className="animate-spin text-2xl">⏳</div>
-          <span>Warming up the engines...</span>
+      {/* 1. Header (Top Bar) */}
+      <header className="h-16 border-b border-white/5 bg-gray-950/80 backdrop-blur-xl px-6 flex items-center justify-between z-40 relative">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-blue-500 shadow-md">
+            <Activity className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-black text-sm uppercase tracking-tight text-white hidden sm:inline">
+            Unified Business Ops Copilot
+          </span>
         </div>
-      )}
 
-      <div className="max-w-7xl mx-auto px-6 py-8 relative">
-        {digest && <DigestPanel digest={digest} />}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-1">
-            <SimulatePanel onProcessed={fetchData} />
-          </div>
-          <div className="lg:col-span-2">
-            <ActivityFeed events={events} onRefresh={fetchData} />
-          </div>
+        {/* Center: Search Box */}
+        <div className="flex-1 max-w-md mx-6 relative">
+          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search events payload or actions..."
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            className="w-full bg-white/[0.03] border border-white/10 rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 transition-colors"
+          />
         </div>
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-4">
+          <RunwayButton 
+            onClick={() => setIsSimulateOpen(true)}
+            className="px-6 py-2 shadow-none hover:shadow-none font-bold text-[10px] tracking-widest"
+          >
+            <div className="flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Event</span>
+            </div>
+          </RunwayButton>
+
+          <div className="h-4 w-px bg-white/10" />
+
+          {/* Decorative icons */}
+          <button className="p-1.5 text-gray-400 hover:text-white transition-colors relative">
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+          </button>
+
+          <button className="p-1.5 text-gray-400 hover:text-white transition-colors">
+            <Settings className="w-4 h-4" />
+          </button>
+
+          <button 
+            onClick={onBackToLanding}
+            title="Log out back to landing" 
+            className="flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Body */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* 2. Sidebar (Left Navigation) */}
+        <aside 
+          className={`flex flex-col border-r border-white/5 bg-gray-900/10 backdrop-blur-xl transition-all duration-300 ${
+            isSidebarCollapsed ? "w-16" : "w-64"
+          }`}
+        >
+          <div className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
+            {/* All option */}
+            <button
+              onClick={() => setFilterDomain(null)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                filterDomain === null 
+                  ? "bg-white/10 text-white border border-white/10" 
+                  : "text-gray-400 hover:text-white border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-indigo-400" />
+                {!isSidebarCollapsed && <span>All Domains</span>}
+              </div>
+              {!isSidebarCollapsed && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-800 text-gray-500">
+                  {events.length}
+                </span>
+              )}
+            </button>
+
+            {domains.map((dom) => {
+              const isSelected = filterDomain === dom.id;
+              const count = events.filter(e => e.domain === dom.id).length;
+              const IconComponent = dom.icon;
+              return (
+                <button
+                  key={dom.id}
+                  onClick={() => setFilterDomain(isSelected ? null : dom.id)}
+                  title={isSidebarCollapsed ? dom.name : undefined}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold border transition-all ${
+                    isSelected 
+                      ? `${dom.colorClass} ${dom.activeBorder}` 
+                      : `text-gray-400 border-transparent ${dom.hoverClass}`
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <IconComponent className="w-4 h-4" />
+                    {!isSidebarCollapsed && <span>{dom.name}</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected ? "bg-white/10 text-white" : "bg-gray-800 text-gray-500"
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Toggle Button */}
+          <div className="p-3 border-t border-white/5">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="w-full flex items-center justify-center p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </div>
+        </aside>
+
+        {/* 3. Main Content Viewport */}
+        <main className="flex-1 overflow-y-auto bg-gray-950 p-6 space-y-6">
+          {/* Top Section (KPI Digest Overview) */}
+          {digest && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl flex items-center justify-between relative overflow-hidden group hover:border-white/15 transition-all">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Total Events Today</p>
+                  <span className="text-3xl font-black bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent">
+                    <AnimatedNumber value={digest.stats.total_events} />
+                  </span>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <Sparkline data={getSparklineBins()} />
+                  <span className="text-[9px] text-gray-500">7-day active trend</span>
+                </div>
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl flex items-center justify-between relative overflow-hidden group hover:border-white/15 transition-all">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Anomalies Flagged</p>
+                  <span className="text-3xl font-black bg-gradient-to-r from-rose-400 to-orange-400 bg-clip-text text-transparent">
+                    <AnimatedNumber value={digest.stats.by_status.flagged || 0} />
+                  </span>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <Sparkline data={getSparklineBins(e => e.status === 'flagged')} />
+                  <span className="text-[9px] text-gray-500">flagged incidents</span>
+                </div>
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl flex items-center justify-between relative overflow-hidden group hover:border-white/15 transition-all">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Pending Approvals</p>
+                  <span className="text-3xl font-black bg-gradient-to-r from-amber-400 to-rose-400 bg-clip-text text-transparent">
+                    <AnimatedNumber value={digest.stats.by_status.pending_approval || 0} />
+                  </span>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <Sparkline data={getSparklineBins(e => e.status === 'pending_approval')} />
+                  <span className="text-[9px] text-gray-500">needs review</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Audit Alerts Banner */}
+          {digest && digest.cross_domain_patterns && digest.cross_domain_patterns.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-4 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg"
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                <div>
+                  <h5 className="text-xs font-black uppercase tracking-wider text-white">Cross-Domain Audit Alert</h5>
+                  <p className="text-xs text-amber-200/80 font-medium mt-0.5">{digest.cross_domain_patterns[0].reason}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {digest.cross_domain_patterns[0].related_event_ids.map(id => (
+                  <span key={id} className="px-2 py-0.5 bg-amber-500/25 border border-amber-500/30 rounded-full text-[9px] font-bold text-white">
+                    #{id}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Split Content Column Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            {/* Event List Column (Left/Center) */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">
+                  Event Stream ({filteredEvents.length})
+                </h4>
+
+                {/* CSV/PDF Export Options */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-gray-400 hover:text-white border border-white/10 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>CSV</span>
+                  </button>
+
+                  <div className="group relative">
+                    <button
+                      disabled
+                      className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-gray-500 border border-white/5 px-3 py-1.5 rounded-full bg-white/[0.02] cursor-not-allowed"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>PDF</span>
+                    </button>
+                    <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 border border-white/10 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-30">
+                      Coming soon
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Breakdown Boxes */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-2">
+                {Object.entries(statusBoxConfig).map(([statusId, config]) => {
+                  const isSelected = filterStatus === statusId;
+                  const count = events.filter(e => {
+                    if (filterDomain && e.domain !== filterDomain) return false;
+                    return e.status === statusId;
+                  }).length;
+
+                  return (
+                    <motion.button
+                      key={statusId}
+                      whileHover={{ scale: 1.02, y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setFilterStatus(isSelected ? null : statusId)}
+                      className={`relative overflow-hidden text-left p-3 rounded-2xl border transition-all duration-300 backdrop-blur-xl cursor-pointer flex flex-col justify-between h-20 ${
+                        isSelected 
+                          ? `${config.activeBg} ${config.activeBorder}` 
+                          : `bg-white/[0.02] border-white/5 hover:border-white/15`
+                      }`}
+                    >
+                      <div className="flex justify-between items-start w-full">
+                        <span className="text-[9px] text-gray-500 font-black uppercase tracking-wider truncate mr-1">
+                          {config.label}
+                        </span>
+                        <span className="text-xs">{config.icon}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <span className={`text-xl font-black ${config.text}`}>
+                          <AnimatedNumber value={count} />
+                        </span>
+                        <span className="text-[7px] text-gray-600 font-black uppercase">events</span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* Event Cards List */}
+              <div className="space-y-3">
+                <AnimatePresence mode="popLayout">
+                  {filteredEvents.map((event) => (
+                    <motion.div
+                      key={event.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-white/[0.02] border border-white/5 rounded-3xl overflow-hidden shadow-xl hover:border-white/10 transition-colors"
+                    >
+                      <button
+                        onClick={() => {
+                          setExpandedId(expandedId === event.id ? null : event.id);
+                          if (expandedId !== event.id) {
+                            fetchHistory(event.id);
+                          }
+                        }}
+                        className="w-full px-5 py-4 flex items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors border-l-4 text-left cursor-pointer"
+                        style={{
+                          borderLeftColor: domainBorderHex[event.domain || "general"],
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-[10px] font-mono text-gray-500 font-bold">
+                              #{event.id}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-extrabold bg-gradient-to-r ${domainGradients[event.domain || "general"]} bg-clip-text text-transparent`}
+                            >
+                              {event.domain || "general"}
+                            </span>
+                            {event.urgency && (
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-extrabold ${
+                                event.urgency === 'high' ? 'bg-red-500/20 text-red-300' :
+                                event.urgency === 'medium' ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'
+                              }`}>
+                                {event.urgency}
+                              </span>
+                            )}
+                            
+                            {/* Pill status color */}
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-extrabold border ${statusColors[event.status] || "bg-white/5 text-gray-300 border-white/5"} flex items-center gap-1`}>
+                              <span>{statusIcons[event.status] || "🔹"}</span>
+                              <span>{event.status.replace(/_/g, " ")}</span>
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300 font-light truncate max-w-2xl">
+                            {event.raw_content}
+                          </p>
+                        </div>
+                        {expandedId === event.id ? (
+                          <ChevronUp className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        )}
+                      </button>
+
+                      {/* Detail Expander */}
+                      <AnimatePresence>
+                        {expandedId === event.id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-white/[0.01] px-5 pb-5 border-t border-white/5 space-y-4 pt-4"
+                          >
+                            <div>
+                              <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+                                Raw Content Payload
+                              </h4>
+                              <p className="text-sm text-gray-300 bg-gray-950 p-4 rounded-2xl border border-white/5 font-mono leading-relaxed">
+                                {event.raw_content}
+                              </p>
+                            </div>
+
+                            {event.agent_response && (
+                              <div>
+                                <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+                                  Copilot Response Actions
+                                </h4>
+                                <p className="text-sm text-gray-300 bg-gray-950 p-4 rounded-2xl border border-white/5 font-mono leading-relaxed">
+                                  {event.agent_response}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Action control approvals */}
+                            {event.status === "pending_approval" && (
+                              <div className="flex gap-3 pt-2">
+                                <motion.button
+                                  whileHover={{ scale: 1.01 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleApprove(event.id, "approved")}
+                                  disabled={approvingId === event.id}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(16,185,129,0.4)] hover:shadow-[0_16px_40px_rgba(16,185,129,0.5)] transition-all disabled:opacity-50 cursor-pointer text-xs"
+                                >
+                                  <Check className="w-4 h-4" />
+                                  Approve Actions
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.01 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleApprove(event.id, "rejected")}
+                                  disabled={approvingId === event.id}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-orange-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(244,63,94,0.4)] hover:shadow-[0_16px_40px_rgba(244,63,94,0.5)] transition-all disabled:opacity-50 cursor-pointer text-xs"
+                                >
+                                  <X className="w-4 h-4" />
+                                  Reject Actions
+                                </motion.button>
+                              </div>
+                            )}
+
+                            {/* Status Timeline history */}
+                            {history[event.id] && history[event.id].length > 0 && (
+                              <div className="pt-2 border-t border-white/5">
+                                <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-3">
+                                  Status History Timeline
+                                </h4>
+                                <div className="space-y-3 pl-2">
+                                  {history[event.id].map((h, i) => (
+                                    <div key={i} className="flex items-center gap-3 text-xs text-gray-400">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-md shadow-sky-500/50" />
+                                      <span className="font-semibold text-gray-300">
+                                        {h.old_status.replace(/_/g, " ")} → {h.new_status.replace(/_/g, " ")}
+                                      </span>
+                                      <span className="text-gray-500 font-mono text-[10px]">
+                                        {new Date(h.changed_at).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {filteredEvents.length === 0 && (
+                <div className="text-center py-12 text-gray-500 font-medium">
+                  All clear — no events match these filters.
+                </div>
+              )}
+            </div>
+
+            {/* Filter Side Panel (Right) */}
+            <div className="space-y-6">
+              {/* Filter controls */}
+              <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">Filter Controls</h4>
+                
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider font-bold text-gray-500 mb-2">Status</label>
+                  <select
+                    value={filterStatus || ""}
+                    onChange={(e) => setFilterStatus(e.target.value || null)}
+                    className="w-full bg-gray-900 border border-white/10 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="pending_approval">Pending Approval</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="flagged">Flagged</option>
+                    <option value="ready_to_send">Ready to Send</option>
+                  </select>
+                </div>
+
+                {/* Domain Filter */}
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider font-bold text-gray-500 mb-2">Domain</label>
+                  <select
+                    value={filterDomain || ""}
+                    onChange={(e) => setFilterDomain(e.target.value || null)}
+                    className="w-full bg-gray-900 border border-white/10 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="">All Domains</option>
+                    <option value="customer_care">Customer Care</option>
+                    <option value="social">Social Media</option>
+                    <option value="finance">Finance Anomaly</option>
+                    <option value="general">General Ops</option>
+                  </select>
+                </div>
+
+                {/* Date presets */}
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider font-bold text-gray-500 mb-2">Date Range</label>
+                  <select
+                    value={filterDatePreset}
+                    onChange={(e) => setFilterDatePreset(e.target.value as any)}
+                    className="w-full bg-gray-900 border border-white/10 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                  </select>
+                </div>
+
+                {/* Toggle anomalies */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                  <span className="text-xs font-bold text-gray-300">Show Anomalies Only</span>
+                  <button
+                    onClick={() => setFilterAnomaliesOnly(!filterAnomaliesOnly)}
+                    className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-300 ${
+                      filterAnomaliesOnly ? "bg-rose-500" : "bg-gray-800"
+                    }`}
+                  >
+                    <div 
+                      className={`w-4 h-4 bg-white rounded-full transition-transform duration-300 ${
+                        filterAnomaliesOnly ? "transform translate-x-5" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Event Distribution by Domain */}
+              {digest && (
+                <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
+                  <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">Distribution by Domain</h4>
+                  <DistributionDonut stats={digest.stats.by_domain} />
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
+
+      {/* Simulate Modal */}
+      <SimulateModal 
+        isOpen={isSimulateOpen} 
+        onClose={() => setIsSimulateOpen(false)} 
+        onProcessed={fetchData} 
+      />
     </div>
   );
 }
