@@ -814,26 +814,73 @@ function Section4Architecture() {
           </motion.text>
 
           {/* Agent nodes */}
-          {[0, 1, 2, 3].map((i) => (
-            <motion.circle
-              key={`agent-${i}`}
-              cx={80 + i * 80}
-              cy="145"
-              r="20"
-              fill={["#0ea5e9", "#8b5cf6", "#10b981", "#64748b"][i]}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-              onMouseEnter={() => setHoveredNode(`agent_${i}`)}
-              onMouseLeave={() => setHoveredNode(null)}
-              className="cursor-pointer"
-              animate={{ 
-                opacity: hoveredNode === null ? 1 : isPathActive(`agent_${i}`) ? 1 : 0.25,
-                scale: hoveredNode === `agent_${i}` ? 1.1 : 1
-              }}
-            />
-          ))}
+          {[0, 1, 2, 3].map((i) => {
+            const agentNames = [
+              ["CUSTOMER", "CARE"],
+              ["SOCIAL", "MEDIA"],
+              ["FINANCE", ""],
+              ["GENERAL", ""]
+            ];
+            const namePair = agentNames[i];
+            const cx = 80 + i * 80;
+            return (
+              <g key={`agent-group-${i}`}>
+                <motion.circle
+                  cx={cx}
+                  cy="145"
+                  r="24"
+                  fill={["#0ea5e9", "#8b5cf6", "#10b981", "#64748b"][i]}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+                  onMouseEnter={() => setHoveredNode(`agent_${i}`)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  className="cursor-pointer"
+                  animate={{ 
+                    opacity: hoveredNode === null ? 1 : isPathActive(`agent_${i}`) ? 1 : 0.25,
+                    scale: hoveredNode === `agent_${i}` ? 1.1 : 1
+                  }}
+                />
+                <motion.text
+                  x={cx}
+                  y={namePair[1] ? "142" : "147"}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="6.5"
+                  fontWeight="900"
+                  letterSpacing="0.3"
+                  className="uppercase pointer-events-none select-none"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+                  animate={{ opacity: hoveredNode === null ? 1 : isPathActive(`agent_${i}`) ? 1 : 0.25 }}
+                >
+                  {namePair[0]}
+                </motion.text>
+                {namePair[1] && (
+                  <motion.text
+                    x={cx}
+                    y="151"
+                    textAnchor="middle"
+                    fill="white"
+                    fontSize="6.5"
+                    fontWeight="900"
+                    letterSpacing="0.3"
+                    className="uppercase pointer-events-none select-none"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+                    animate={{ opacity: hoveredNode === null ? 1 : isPathActive(`agent_${i}`) ? 1 : 0.25 }}
+                  >
+                    {namePair[1]}
+                  </motion.text>
+                )}
+              </g>
+            );
+          })}
 
           {/* Shared Store node */}
           <motion.rect
