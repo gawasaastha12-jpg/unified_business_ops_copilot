@@ -1,0 +1,38 @@
+[
+  {
+    "question": "My account is locked. How do I regain access?",
+    "answer": "If your account is locked due to multiple failed login attempts or security reasons, please go to the login page and click 'Forgot Password'. You will receive an email with instructions to verify your identity and unlock your account. If you don't receive the email within 15 minutes, please check your spam folder or contact our support team for a manual unlock."
+  },
+  {
+    "question": "What is your refund policy?",
+    "answer": "We offer a 30-day money-back guarantee on all unused and unopened items. If you are not satisfied with your purchase, you can return it within 30 days of delivery for a full refund minus shipping costs. Digital subscriptions can be refunded within 7 days of the initial charge if no services have been utilized."
+  },
+  {
+    "question": "My order is delayed. How can I track it?",
+    "answer": "We apologize for the delay. You can track your order status in real-time by logging into your account and visiting the 'Order History' page. If your order hasn't updated for more than 3 business days, please let us know so we can investigate with our shipping partners."
+  },
+  {
+    "question": "How do I reset my password?",
+    "answer": "To reset your password, click the 'Forgot Password' link on the login screen. Enter the email address associated with your account, and we will send you a secure link to create a new password. For security reasons, the link will expire after 24 hours."
+  },
+  {
+    "question": "How can I cancel my subscription?",
+    "answer": "You can cancel your subscription at any time through your account dashboard. Navigate to 'Account Settings', select the 'Billing & Subscriptions' tab, and click 'Cancel Subscription'. Your access will continue until the end of your current billing cycle, and you won't be charged again."
+  },
+  {
+    "question": "I received a defective product. How do I get a replacement?",
+    "answer": "We are incredibly sorry that you received a defective item. Please send us a photo of the defect along with your order number. We will expedite a free replacement to you immediately. You do not need to return the defective item unless instructed otherwise."
+  },
+  {
+    "question": "Why did my payment fail?",
+    "answer": "Payment failures typically happen due to insufficient funds, an expired card, or bank security blocks. Please double-check your payment details and billing address. If the issue persists, we recommend contacting your bank to approve the transaction or trying an alternative payment method."
+  },
+  {
+    "question": "How do I change my billing address?",
+    "answer": "To update your billing address, log into your account, go to 'Account Settings', and click on 'Payment Methods'. From there, you can edit your current billing address or add a new one. Ensure the address exactly matches what your bank has on file to prevent payment issues."
+  },
+  {
+    "question": "I received the wrong item in my order.",
+    "answer": "We are sorry for the mix-up! Please provide your order number and a picture of the incorrect item you received. We will send out the correct item via expedited shipping right away and provide a prepaid return label for the incorrect item."
+  }
+]
