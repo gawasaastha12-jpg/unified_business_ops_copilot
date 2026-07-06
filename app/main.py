@@ -55,7 +55,20 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
         return {"error": "Event not found"}
     return event
 
+@app.on_event("startup")
+def startup_seed_if_empty():
+    from app.database import SessionLocal
+    from app.models import Event
+    from app.seed_data import seed
+    db = SessionLocal()
+    try:
+        if db.query(Event).count() == 0:
+            seed()
+    finally:
+        db.close()
+
 # Serve frontend static files
-frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend_v1", "dist", "public"))
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+frontend_path = os.path.join(os.path.dirname(__file__), "frontend_dist")
+if os.path.isdir(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+
