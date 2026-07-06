@@ -139,6 +139,177 @@ function DistributionDonut({ stats }: { stats: Record<string, number> }) {
   );
 }
 
+// Narrate History Entry for Audit Trail
+function narrateHistoryEntry(entry: HistoryEntry, eventDomain: string | null) {
+  const domainName = eventDomain ? (eventDomain === 'customer_care' ? 'Customer Care' : eventDomain === 'social' ? 'Social Media' : eventDomain === 'finance' ? 'Finance' : 'General') : 'General';
+  
+  if (entry.new_status === "created") {
+    return {
+      title: "Incident Received",
+      actor: "Ingestion Gateway",
+      dotColor: "blue"
+    };
+  }
+
+  if (entry.old_status === "pending" || entry.old_status === "") {
+    return {
+      title: `Routed to ${domainName} Queue`,
+      actor: "Router Classifier AI",
+      dotColor: "amber"
+    };
+  }
+
+  if (entry.new_status === "pending_approval" || entry.new_status === "ready_to_send") {
+    return {
+      title: "Agent Response Draft Generated",
+      actor: `${domainName} Agent`,
+      dotColor: "emerald"
+    };
+  }
+
+  if (entry.new_status === "flagged") {
+    return {
+      title: eventDomain === "finance" ? "Fraud Warning Triggered" : "Anomaly Flagged",
+      actor: "Risk Guard Agent",
+      dotColor: "red"
+    };
+  }
+
+  if (entry.new_status === "approved") {
+    return {
+      title: "Approved",
+      actor: "Human Reviewer",
+      dotColor: "green"
+    };
+  }
+
+  if (entry.new_status === "rejected") {
+    return {
+      title: "Rejected",
+      actor: "Human Reviewer",
+      dotColor: "rose"
+    };
+  }
+
+  if (entry.new_status === "needs_manual_routing") {
+    return {
+      title: "Flagged for Manual Routing",
+      actor: "Fallback Handler",
+      dotColor: "slate"
+    };
+  }
+
+  return {
+    title: `Status set to ${entry.new_status.replace(/_/g, " ")}`,
+    actor: "System",
+    dotColor: "slate"
+  };
+}
+
+// Reusable Audit Trail History Component
+function AuditTrailHistory({ 
+  event, 
+  rawHistory 
+}: { 
+  event: Event; 
+  rawHistory: HistoryEntry[];
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  let timelineEntries = [...rawHistory];
+  timelineEntries.sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime());
+
+  const hasCreation = timelineEntries.some(e => e.old_status === "" || e.old_status === null || e.new_status === "created");
+  if (!hasCreation) {
+    timelineEntries.unshift({
+      old_status: "",
+      new_status: "created",
+      changed_at: event.created_at
+    });
+  }
+
+  const dotColorClasses: Record<string, { dot: string; glow: string; text: string }> = {
+    blue: { dot: "bg-blue-500", glow: "shadow-[0_0_8px_rgba(59,130,246,0.5)]", text: "text-blue-400" },
+    amber: { dot: "bg-amber-500", glow: "shadow-[0_0_8px_rgba(245,158,11,0.5)]", text: "text-amber-400" },
+    teal: { dot: "bg-emerald-500", glow: "shadow-[0_0_8px_rgba(16,185,129,0.5)]", text: "text-emerald-400" },
+    emerald: { dot: "bg-emerald-500", glow: "shadow-[0_0_8px_rgba(16,185,129,0.5)]", text: "text-emerald-400" },
+    red: { dot: "bg-red-500", glow: "shadow-[0_0_8px_rgba(239,68,68,0.55)]", text: "text-red-400" },
+    green: { dot: "bg-emerald-500", glow: "shadow-[0_0_8px_rgba(16,185,129,0.5)]", text: "text-emerald-400" },
+    rose: { dot: "bg-rose-500", glow: "shadow-[0_0_8px_rgba(244,63,94,0.5)]", text: "text-rose-400" },
+    slate: { dot: "bg-slate-500", glow: "shadow-[0_0_8px_rgba(100,116,139,0.4)]", text: "text-slate-400" }
+  };
+
+  return (
+    <div className="bg-white/[0.02] border border-white/5 rounded-3xl overflow-hidden shadow-xl mt-4">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors border-b border-white/5 text-left cursor-pointer"
+      >
+        <span className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+          AUDIT TRAIL HISTORY
+        </span>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="text-gray-500 hover:text-white transition-colors"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 150, damping: 18 }}
+            className="overflow-hidden"
+          >
+            <div className="p-5 pl-7 pr-6 relative space-y-6">
+              {timelineEntries.map((entry, index) => {
+                const narration = narrateHistoryEntry(entry, event.domain);
+                const colors = dotColorClasses[narration.dotColor] || dotColorClasses.slate;
+                const formattedTime = new Date(entry.changed_at).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: true
+                });
+
+                return (
+                  <div key={index} className="relative flex gap-4 items-start">
+                    {index < timelineEntries.length - 1 && (
+                      <div className="absolute left-[5.5px] top-[14px] bottom-[-24px] w-[1px] bg-white/10" />
+                    )}
+
+                    <div className="relative mt-1.5 flex-shrink-0">
+                      <div className={`w-3 h-3 rounded-full ${colors.dot} ${colors.glow} border border-gray-950`} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h5 className="text-xs font-bold text-white leading-tight">
+                        {narration.title}
+                      </h5>
+                      <p className="text-[10px] text-gray-500 font-medium mt-0.5">
+                        by <span className="text-gray-400 font-bold">{narration.actor}</span>
+                      </p>
+                      <p className="text-[9px] text-gray-600 font-mono mt-1 tracking-wider uppercase">
+                        {formattedTime}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Fire Button Component with custom rising flame particles on hover
 function FireButton({ 
   disabled, 
@@ -1125,26 +1296,9 @@ export default function Dashboard({ onBackToLanding }: { onBackToLanding: () => 
                               </div>
                             )}
 
-                            {/* Status Timeline history */}
+                            {/* Status Timeline history (Audit Trail) */}
                             {history[event.id] && history[event.id].length > 0 && (
-                              <div className="pt-2 border-t border-white/5">
-                                <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-3">
-                                  Status History Timeline
-                                </h4>
-                                <div className="space-y-3 pl-2">
-                                  {history[event.id].map((h, i) => (
-                                    <div key={i} className="flex items-center gap-3 text-xs text-gray-400">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-md shadow-sky-500/50" />
-                                      <span className="font-semibold text-gray-300">
-                                        {h.old_status.replace(/_/g, " ")} → {h.new_status.replace(/_/g, " ")}
-                                      </span>
-                                      <span className="text-gray-500 font-mono text-[10px]">
-                                        {new Date(h.changed_at).toLocaleString()}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              <AuditTrailHistory event={event} rawHistory={history[event.id]} />
                             )}
                           </motion.div>
                         )}
