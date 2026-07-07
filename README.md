@@ -43,7 +43,7 @@ Inbound Events (email · social · transactions)
 
 ## Live Demo
 
-**[unified-business-ops-copilot.onrender.com](#)** *(replace with your actual deployed URL)*
+**https://unified-business-ops-copilot.onrender.com**
 
 > Note: hosted on Render's free tier, which spins down after inactivity — the first load may take 30-60 seconds to wake up.
 
