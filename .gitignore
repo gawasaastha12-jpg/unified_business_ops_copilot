@@ -19,6 +19,7 @@ ENV/
 .coverage
 htmlcov/
 Unified-Business-Ops-main
+frontend_v1
 # Databases (SQLite)
 *.db
 *.sqlite3

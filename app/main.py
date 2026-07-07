@@ -22,7 +22,7 @@ app = FastAPI(title="Unified Business Ops Copilot")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,8 +67,30 @@ def startup_seed_if_empty():
     finally:
         db.close()
 
-# Serve frontend static files
+from fastapi.responses import FileResponse
+
+# Serve frontend static files (JS/CSS/images) from /assets — exact match, no fallback needed
 frontend_path = os.path.join(os.path.dirname(__file__), "frontend_dist")
 if os.path.isdir(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+    assets_path = os.path.join(frontend_path, "assets")
+    if os.path.isdir(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
+    # Favicon — serve directly so the network tab stays clean
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        ico = os.path.join(frontend_path, "favicon.ico")
+        if os.path.isfile(ico):
+            return FileResponse(ico)
+        # Graceful fallback: 204 No Content instead of 404
+        from fastapi.responses import Response
+        return Response(status_code=204)
+
+    # SPA catch-all: every path that is not /api/* or a real static asset
+    # falls back to index.html so wouter can handle client-side routing
+    # (e.g. page refresh on /dashboard, direct URL entry, etc.)
+    # IMPORTANT: this must be the last route registered.
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        index_file = os.path.join(frontend_path, "index.html")
+        return FileResponse(index_file)
