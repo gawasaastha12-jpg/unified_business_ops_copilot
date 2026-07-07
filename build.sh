@@ -4,7 +4,7 @@ set -e
 
 echo "Building frontend..."
 cd frontend_v2
-npm install --legacy-peer-deps
+npm install
 npm run build
 cd ..
 
