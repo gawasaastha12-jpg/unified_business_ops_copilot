@@ -160,7 +160,7 @@ Backend runs at `http://127.0.0.1:8000`. Interactive API docs at `http://127.0.0
 **Frontend (development)**
 
 ```bash
-cd frontend_v1/client
+cd frontend_v2/client
 npm install
 npm run dev
 ```
