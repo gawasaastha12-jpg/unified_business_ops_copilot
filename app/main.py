@@ -34,11 +34,11 @@ finally:
 app = FastAPI(title="Unified Business Ops Copilot")
 
 
-# Configure CORS
+# Configure CORS — allow all origins so the app works in production (Render, Vercel, etc.)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -74,19 +74,17 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
 
 @app.on_event("startup")
 def startup_seed_if_empty():
+    """Seed the DB with demo events on first boot. Does NOT call any LLM/API — events
+    start as 'pending' and are processed lazily when the user clicks from the dashboard.
+    This keeps startup fast so Render/cloud can bind the port before the timeout.
+    """
     from app.database import SessionLocal
     from app.models import Event
     from app.seed_data import seed
-    from app.routes.router import process_single_event
     db = SessionLocal()
     try:
         if db.query(Event).count() == 0:
             seed()
-        
-        # Process any pending events
-        pending = db.query(Event).filter(Event.status == "pending").all()
-        for e in pending:
-            process_single_event(e, db)
     finally:
         db.close()
 
