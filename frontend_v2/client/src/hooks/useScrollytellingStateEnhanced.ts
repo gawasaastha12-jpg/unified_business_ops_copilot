@@ -70,26 +70,30 @@ export function useScrollytellingStateEnhanced(): EnhancedSceneState {
           let sceneStart = 0;
           let sceneEnd = 0.2;
 
-          // 5-Scene linear mapping
-          if (progress < 0.2) {
+          // 6-Scene linear mapping
+          if (progress < 0.15) {
             sceneIndex = 0;
             sceneStart = 0;
-            sceneEnd = 0.2;
-          } else if (progress < 0.45) {
+            sceneEnd = 0.15;
+          } else if (progress < 0.35) {
             sceneIndex = 1;
-            sceneStart = 0.2;
-            sceneEnd = 0.45;
-          } else if (progress < 0.6) {
+            sceneStart = 0.15;
+            sceneEnd = 0.35;
+          } else if (progress < 0.50) {
             sceneIndex = 2;
-            sceneStart = 0.45;
-            sceneEnd = 0.6;
-          } else if (progress < 0.85) {
+            sceneStart = 0.35;
+            sceneEnd = 0.50;
+          } else if (progress < 0.70) {
             sceneIndex = 3;
-            sceneStart = 0.6;
-            sceneEnd = 0.85;
-          } else {
+            sceneStart = 0.50;
+            sceneEnd = 0.70;
+          } else if (progress < 0.88) {
             sceneIndex = 4;
-            sceneStart = 0.85;
+            sceneStart = 0.70;
+            sceneEnd = 0.88;
+          } else {
+            sceneIndex = 5;
+            sceneStart = 0.88;
             sceneEnd = 1.0;
           }
 
@@ -167,7 +171,16 @@ export function useScrollytellingStateEnhanced(): EnhancedSceneState {
             newState.resilienceShieldOpacity = sceneProgress * 0.65;
             newState.resilienceShieldPulse = Math.sin(sceneProgress * Math.PI * 2) * 0.5 + 0.5;
           } else if (sceneIndex === 4) {
-            // Scene 5: CTA (Pushes camera toward core & whiteout)
+            // Scene 5: Business Case
+            newState.agentsTowerFocusIndex = -1;
+            newState.agentsTowerBrightness = [0.85, 0.85, 0.85, 0.85];
+            newState.differentiatorPathwayPulse = 0.5;
+            newState.resilienceShieldOpacity = 0.65;
+            newState.ctaCityBrightness = 1;
+            newState.ctaPathwaysLit = 1;
+            newState.ctaCoreRotationSpeed = 2;
+          } else if (sceneIndex === 5) {
+            // Scene 6: CTA (Pushes camera toward core & whiteout)
             newState.ctaCityBrightness = 1;
             newState.ctaPathwaysLit = 1;
             newState.ctaCoreRotationSpeed = 2 + sceneProgress * 2.5;

@@ -3,11 +3,14 @@ import { motion, AnimatePresence, animate } from "framer-motion";
 import { 
   RefreshCw, ChevronDown, ChevronUp, Check, X, ArrowLeft, Mail, 
   Megaphone, TrendingUp, Settings, Search, Bell, User, Plus, 
-  Menu, Download, AlertTriangle, FileSpreadsheet, FileDown, Activity, LogOut
+  Menu, Download, AlertTriangle, FileSpreadsheet, FileDown, Activity, LogOut, Compass, Edit3, Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { DOMAIN_COLORS } from "@/const";
 import { useLocation } from "wouter";
+import BenchmarkTab from "../components/BenchmarkTab";
+import ReasoningTraceViewer from "../components/ReasoningTraceViewer";
+import EditResponseModal from "../components/EditResponseModal";
 
 // Types
 interface Event {
@@ -146,6 +149,14 @@ function DistributionDonut({ stats }: { stats: Record<string, number> }) {
 function narrateHistoryEntry(entry: HistoryEntry, eventDomain: string | null) {
   const domainName = eventDomain ? (eventDomain === 'customer_care' ? 'Customer Care' : eventDomain === 'social' ? 'Social Media' : eventDomain === 'finance' ? 'Finance' : 'General') : 'General';
   
+  if (entry.new_status === "response_edited") {
+    return {
+      title: "Response edited by Human Reviewer",
+      actor: "Human Reviewer",
+      dotColor: "indigo"
+    };
+  }
+
   if (entry.new_status === "created") {
     return {
       title: "Incident Received",
@@ -626,8 +637,18 @@ function SimulateModal({
 }
 
 // Main Dashboard Component
+const AUTO_PILOT_TEMPLATES = [
+  { source: "email", content: "[AUTO-PILOT DEMO] Routine inquiry: Can I update my shipping address for order #44992?" },
+  { source: "twitter", content: "[AUTO-PILOT DEMO] Hey @YourBrand, love the new UI interface design updates on the dashboard! #ops" },
+  { source: "email", content: "[AUTO-PILOT DEMO] Quick question about refund processing times for bank transfers." },
+  { source: "twitter", content: "[AUTO-PILOT DEMO] Just subscribed to the SaaS Premium Plan. Simple checkout flow! @YourBrand" },
+  { source: "transaction_csv", content: '{"txn_id": "T881", "amount": 49.99, "user_id": "U777", "notes": "[AUTO-PILOT DEMO]"}' }
+];
+
 export default function Dashboard() {
   const [_, setLocation] = useLocation();
+  const [isAutoPilot, setIsAutoPilot] = useState(false);
+  const autoPilotTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [digest, setDigest] = useState<DigestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -635,6 +656,7 @@ export default function Dashboard() {
   
   // Layout State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [currentTab, setCurrentTab] = useState<"dashboard" | "benchmark">("dashboard");
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
 
   // Filters State
@@ -649,6 +671,7 @@ export default function Dashboard() {
   const [history, setHistory] = useState<Record<number, HistoryEntry[]>>({});
   const [loadingHistory, setLoadingHistory] = useState<Set<number>>(new Set());
   const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   const domains = [
     { id: "customer_care", name: "Customer Care", icon: Mail, colorClass: DOMAIN_COLORS.customer_care.colorClass, hoverClass: DOMAIN_COLORS.customer_care.hoverClass, activeBorder: DOMAIN_COLORS.customer_care.activeBorder },
@@ -829,9 +852,83 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveResponse = async (newResponse: string) => {
+    if (!editingEvent) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/events/${editingEvent.id}/response`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_response: newResponse }),
+      });
+      if (res.ok) {
+        toast.success("Draft response updated successfully");
+        fetchData();
+        if (expandedId === editingEvent.id) {
+          fetchHistory(editingEvent.id);
+        }
+      } else {
+        toast.error("Failed to save response edit");
+      }
+    } catch (error) {
+      toast.error("Error updating response");
+      console.error(error);
+    }
+  };
+
+  const handleLockSession = () => {
+    localStorage.removeItem("copilot_session_active");
+    toast.info("Ingress Gate locked. Session terminated.");
+    setLocation("/auth");
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (isAutoPilot) {
+      toast.info("Auto-Pilot mode enabled. Injecting demo events every 15s.");
+      
+      const runAutoPilotTick = async () => {
+        const template = AUTO_PILOT_TEMPLATES[Math.floor(Math.random() * AUTO_PILOT_TEMPLATES.length)];
+        try {
+          const createRes = await fetch(`${API_BASE}/api/events/simulate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ source: template.source, raw_content: template.content }),
+          });
+          if (!createRes.ok) return;
+          const newEvent = await createRes.json();
+          const eventId = newEvent.event?.id || newEvent.id;
+          
+          await fetch(`${API_BASE}/api/process/${eventId}`, {
+            method: "POST",
+          });
+          
+          fetchData();
+        } catch (err) {
+          console.error("Auto-Pilot process error:", err);
+        }
+      };
+
+      runAutoPilotTick();
+      const timer = setInterval(runAutoPilotTick, 15000);
+      autoPilotTimerRef.current = timer;
+    } else {
+      if (autoPilotTimerRef.current) {
+        clearInterval(autoPilotTimerRef.current);
+        autoPilotTimerRef.current = null;
+        toast.info("Auto-Pilot mode disabled.");
+      }
+    }
+
+    return () => {
+      if (autoPilotTimerRef.current) {
+        clearInterval(autoPilotTimerRef.current);
+        autoPilotTimerRef.current = null;
+      }
+    };
+  }, [isAutoPilot]);
 
   // Filter Computation
   const filteredEvents = events.filter((e) => {
@@ -973,6 +1070,23 @@ export default function Dashboard() {
             </div>
           </RunwayButton>
 
+          {/* Auto-Pilot Toggle */}
+          <div className="flex items-center gap-2 border border-white/10 bg-white/[0.02] rounded-full px-3 py-1">
+            <span className="text-[9px] uppercase font-bold tracking-wider text-gray-400">Auto-Pilot</span>
+            <button
+              onClick={() => setIsAutoPilot(!isAutoPilot)}
+              className={`w-8 h-4.5 rounded-full p-0.5 transition-colors duration-300 relative ${
+                isAutoPilot ? "bg-amber-500" : "bg-gray-800"
+              }`}
+            >
+              <div 
+                className={`w-3.5 h-3.5 bg-white rounded-full transition-transform duration-300 ${
+                  isAutoPilot ? "transform translate-x-3.5" : ""
+                }`}
+              />
+            </button>
+          </div>
+
           <div className="h-4 w-px bg-white/10" />
 
           {/* Decorative icons */}
@@ -986,11 +1100,11 @@ export default function Dashboard() {
           </button>
 
           <button 
-            onClick={() => setLocation("/")}
-            title="Log out back to landing" 
+            onClick={handleLockSession}
+            title="Lock Ingress Gateway" 
             className="flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <Lock className="w-3.5 h-3.5" />
           </button>
         </div>
       </header>
@@ -1006,9 +1120,12 @@ export default function Dashboard() {
           <div className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
             {/* All option */}
             <button
-              onClick={() => setFilterDomain(null)}
+              onClick={() => {
+                setFilterDomain(null);
+                setCurrentTab("dashboard");
+              }}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                filterDomain === null 
+                filterDomain === null && currentTab === "dashboard"
                   ? "bg-white/10 text-white border border-white/10" 
                   : "text-gray-400 hover:text-white border border-transparent"
               }`}
@@ -1025,7 +1142,7 @@ export default function Dashboard() {
             </button>
 
             {domains.map((dom) => {
-              const isSelected = filterDomain === dom.id;
+              const isSelected = filterDomain === dom.id && currentTab === "dashboard";
               // null-domain (unrouted) events are counted under 'general'
               const count = events.filter(e =>
                 dom.id === "general"
@@ -1036,7 +1153,10 @@ export default function Dashboard() {
               return (
                 <button
                   key={dom.id}
-                  onClick={() => setFilterDomain(isSelected ? null : dom.id)}
+                  onClick={() => {
+                    setFilterDomain(filterDomain === dom.id ? null : dom.id);
+                    setCurrentTab("dashboard");
+                  }}
                   title={isSidebarCollapsed ? dom.name : undefined}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold border transition-all ${
                     isSelected 
@@ -1058,6 +1178,25 @@ export default function Dashboard() {
                 </button>
               );
             })}
+
+            {/* System Benchmark option */}
+            <button
+              onClick={() => {
+                setCurrentTab("benchmark");
+                setFilterDomain(null);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                currentTab === "benchmark"
+                  ? "bg-white/10 text-white border border-white/10"
+                  : "text-gray-400 hover:text-white border border-transparent"
+              }`}
+              title={isSidebarCollapsed ? "System Benchmark" : undefined}
+            >
+              <div className="flex items-center gap-3">
+                <Compass className="w-4 h-4 text-amber-400" />
+                {!isSidebarCollapsed && <span>System Benchmark</span>}
+              </div>
+            </button>
           </div>
 
           {/* Toggle Button */}
@@ -1073,7 +1212,26 @@ export default function Dashboard() {
 
         {/* 3. Main Content Viewport */}
         <main className="flex-1 overflow-y-auto bg-gray-950 p-6 space-y-6">
-          {/* Top Section (KPI Digest Overview) — derived from live events, not stale digest cache */}
+          {currentTab === "benchmark" ? (
+            <BenchmarkTab apiBase={API_BASE} />
+          ) : (
+            <>
+              {/* Auto-Pilot active banner */}
+              {isAutoPilot && (
+                <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 px-4 py-3 rounded-2xl flex items-center justify-between text-xs font-bold animate-pulse">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    SIMULATION MODE ACTIVE — AUTO-PILOT LIVE EVENT INJECTION IN PROGRESS
+                  </span>
+                  <button 
+                    onClick={() => setIsAutoPilot(false)}
+                    className="underline hover:text-white"
+                  >
+                    Turn Off Auto-Pilot
+                  </button>
+                </div>
+              )}
+              {/* Top Section (KPI Digest Overview) — derived from live events, not stale digest cache */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-5 shadow-xl flex items-center justify-between relative overflow-hidden group hover:border-white/15 transition-all">
               <div>
@@ -1142,7 +1300,11 @@ export default function Dashboard() {
           {/* Split Content Column Area */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Event List Column (Left/Center) */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className={`lg:col-span-2 space-y-4 rounded-3xl p-3 border transition-all ${
+              isAutoPilot 
+                ? "border-amber-500/40 bg-amber-500/[0.01] shadow-[0_0_24px_rgba(245,158,11,0.05)] animate-pulse" 
+                : "border-transparent"
+            }`}>
               <div className="flex items-center justify-between">
                 <h4 className="text-[10px] uppercase tracking-widest font-black text-gray-500">
                   Event Stream ({filteredEvents.length})
@@ -1323,6 +1485,15 @@ export default function Dashboard() {
                                   <motion.button
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
+                                    onClick={() => setEditingEvent(event)}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(99,102,241,0.4)] hover:shadow-[0_16px_40px_rgba(99,102,241,0.5)] transition-all cursor-pointer text-xs"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                    Edit Response
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
                                     onClick={() => handleApprove(event.id, "rejected")}
                                     disabled={approvingId === event.id}
                                     className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-orange-400 text-white py-2.5 rounded-full font-bold shadow-[0_12px_32px_rgba(244,63,94,0.4)] hover:shadow-[0_16px_40px_rgba(244,63,94,0.5)] transition-all disabled:opacity-50 cursor-pointer text-xs"
@@ -1337,6 +1508,11 @@ export default function Dashboard() {
                             {/* Status Timeline history (Audit Trail) */}
                             {history[event.id] && history[event.id].length > 0 && (
                               <AuditTrailHistory event={event} rawHistory={history[event.id]} />
+                            )}
+
+                            {/* Reasoning Trace Viewer */}
+                            {event.reasoning_trace && (
+                              <ReasoningTraceViewer trace={event.reasoning_trace} />
                             )}
                           </motion.div>
                         )}
@@ -1434,6 +1610,8 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+            </>
+          )}
         </main>
       </div>
 
@@ -1442,6 +1620,14 @@ export default function Dashboard() {
         isOpen={isSimulateOpen} 
         onClose={() => setIsSimulateOpen(false)} 
         onProcessed={fetchData} 
+      />
+
+      {/* Edit Response Modal */}
+      <EditResponseModal
+        isOpen={editingEvent !== null}
+        onClose={() => setEditingEvent(null)}
+        onSave={handleSaveResponse}
+        initialResponse={editingEvent?.agent_response || ""}
       />
     </div>
   );

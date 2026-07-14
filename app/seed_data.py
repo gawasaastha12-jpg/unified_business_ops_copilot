@@ -31,6 +31,9 @@ def seed():
         models.Event(source="email", raw_content="The wireless earbuds I ordered stopped charging after 3 days, need a replacement."),
         models.Event(source="twitter", raw_content="@YourBrand earbuds died in 3 days, not impressed."),
         models.Event(source="transaction_csv", raw_content='{"txn_id": "T004", "amount": 129.99, "user_id": "U888", "notes": "refund for broken earbuds"}'),
+        
+        # New Cross-Domain Scenario: Subscription billing dispute
+        models.Event(source="email", raw_content="Hi support, I was billed twice for my subscription this month. I see two charges of $49.99 for user U123. Can you check and refund the duplicate?"),
     ]
     
     db.add_all(events)

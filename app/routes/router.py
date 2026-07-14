@@ -13,6 +13,9 @@ from app.agents.general import handle_general_event
 class StatusUpdate(BaseModel):
     status: str
 
+class ResponseUpdate(BaseModel):
+    agent_response: str
+
 class SimulateEvent(BaseModel):
     source: str
     raw_content: str
@@ -33,7 +36,7 @@ def route_event(event_id: int, db: Session = Depends(get_db)):
     {event.raw_content}
     
     Return a JSON object with exactly these fields:
-    - "domain": string, must be one of ["customer_care", "social", "finance", "management"]
+    - "domain": string, must be one of ["customer_care", "social", "finance", "management"]. Note: social media posts (source: twitter) should be classified as "social". Customer emails (source: email) regarding billing, disputes, or subscription questions should be classified as "customer_care". Only raw transaction logs (source: transaction_csv) should be classified as "finance".
     - "urgency": string, must be one of ["low", "medium", "high"]
     - "confidence": float, a confidence score between 0.0 and 1.0
     """
@@ -75,6 +78,25 @@ def update_event_status(event_id: int, update: StatusUpdate, db: Session = Depen
     models.update_event_status(db, event, update.status)
     return {"status": "success", "event": event}
 
+@router.patch("/events/{event_id}/response")
+def update_event_response(event_id: int, update: ResponseUpdate, db: Session = Depends(get_db)):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.agent_response = update.agent_response
+    
+    log = models.StatusLog(
+        event_id=event.id,
+        old_status=event.status,
+        new_status="response_edited"
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(event)
+    
+    return {"status": "success", "event": event}
+
 @router.get("/events/{event_id}/history")
 def get_event_history(event_id: int, db: Session = Depends(get_db)):
     history = db.query(models.StatusLog).filter(models.StatusLog.event_id == event_id).order_by(models.StatusLog.changed_at.asc()).all()
@@ -101,7 +123,7 @@ def process_single_event(event, db: Session):
         {event.raw_content}
         
         Return a JSON object with exactly these fields:
-        - "domain": string, must be one of ["customer_care", "social", "finance", "management"]
+        - "domain": string, must be one of ["customer_care", "social", "finance", "management"]. Note: social media posts (source: twitter) should be classified as "social". Customer emails (source: email) regarding billing, disputes, or subscription questions should be classified as "customer_care". Only raw transaction logs (source: transaction_csv) should be classified as "finance".
         - "urgency": string, must be one of ["low", "medium", "high"]
         - "confidence": float, a confidence score between 0.0 and 1.0
         """
@@ -119,12 +141,16 @@ def process_single_event(event, db: Session):
         event.domain = domain
         event.urgency = urgency
         event.confidence = confidence
+        event.reasoning_trace = f"Router: Assigned domain={domain}, urgency={urgency}, confidence={confidence:.2f}."
         
         if domain == "general":
             models.update_event_status(db, event, "needs_manual_routing")
             
         db.commit()
         db.refresh(event)
+    else:
+        if not event.reasoning_trace:
+            event.reasoning_trace = f"Router: Pre-assigned domain={event.domain}, urgency={event.urgency}, confidence={event.confidence}."
     
     # 2. Process based on domain
     if event.status == "pending" or (event.domain == "general" and event.status == "needs_manual_routing"):
@@ -135,6 +161,7 @@ def process_single_event(event, db: Session):
             drafted_reply, suggested_status = result
             event.agent_response = drafted_reply
             models.update_event_status(db, event, suggested_status)
+            event.reasoning_trace = (event.reasoning_trace or "") + f"\nCustomer Care Agent: Drafted email response based on FAQ context. Set suggested status to {suggested_status}."
         elif event.domain == "social":
             result = handle_social_event(event)
             if isinstance(result[0], dict) and "error" in result[0]:
@@ -142,13 +169,18 @@ def process_single_event(event, db: Session):
             finding, suggested_status = result
             event.agent_response = finding
             models.update_event_status(db, event, suggested_status)
+            event.reasoning_trace = (event.reasoning_trace or "") + f"\nSocial Agent: Analyzed sentiment and drafted public reply. Set suggested status to {suggested_status}."
         elif event.domain == "finance":
             finding, suggested_status = handle_finance_event(event, db)
             event.agent_response = finding
             models.update_event_status(db, event, suggested_status)
+            event.reasoning_trace = (event.reasoning_trace or "") + f"\nFinance Agent: Ran duplicate charge and spike detection. Anomaly result: {finding}. Set suggested status to {suggested_status}."
         elif event.domain == "general":
             handle_general_event(db, event.id)
+            event.reasoning_trace = (event.reasoning_trace or "") + f"\nGeneral Agent: Set status to needs_manual_routing due to low confidence classification."
             
+    db.commit()
+    db.refresh(event)
     return {"status": "success", "event": event}
 
 @router.post("/process/{event_id}")

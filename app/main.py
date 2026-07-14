@@ -12,9 +12,24 @@ from app.routes.finance import router as finance_router
 from app.routes.social import router as social_router
 from app.routes.management import router as management_router
 from app.routes.general import router as general_router
+from app.routes.benchmark import router as benchmark_router
+from app.routes.auth import router as auth_router
 
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)
+
+# Seed default admin user if missing
+from app.database import SessionLocal
+db = SessionLocal()
+try:
+    if db.query(models.User).filter(models.User.username == "aastha").count() == 0:
+        pwd_hash, salt = models.hash_password("antigravity")
+        user = models.User(username="aastha", password_hash=pwd_hash, salt=salt)
+        db.add(user)
+        db.commit()
+        print("Seeded default user 'aastha' with password 'antigravity'")
+finally:
+    db.close()
 
 app = FastAPI(title="Unified Business Ops Copilot")
 
@@ -34,6 +49,8 @@ app.include_router(finance_router, prefix="/api/agents")
 app.include_router(social_router, prefix="/api/agents")
 app.include_router(general_router, prefix="/api/agents")
 app.include_router(management_router, prefix="/api/agents")
+app.include_router(benchmark_router, prefix="/api")
+app.include_router(auth_router, prefix="/api/auth")
 
 @app.get("/api/events")
 def list_events(
@@ -60,10 +77,16 @@ def startup_seed_if_empty():
     from app.database import SessionLocal
     from app.models import Event
     from app.seed_data import seed
+    from app.routes.router import process_single_event
     db = SessionLocal()
     try:
         if db.query(Event).count() == 0:
             seed()
+        
+        # Process any pending events
+        pending = db.query(Event).filter(Event.status == "pending").all()
+        for e in pending:
+            process_single_event(e, db)
     finally:
         db.close()
 

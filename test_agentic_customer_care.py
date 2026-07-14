@@ -1,4 +1,7 @@
-from app.agents.retrieval import retrieve_relevant_faqs_with_scores
+from dotenv import load_dotenv
+load_dotenv()
+
+from app.agents.retrieval import retrieve_relevant_faqs
 from app.llm import (
     generate_json, 
     MODEL_FALLBACK_CHAIN, 
@@ -12,12 +15,7 @@ from app import models
 import json
 import time
 
-def handle_customer_care_event(event) -> tuple[str, str]:
-    """
-    Handles a customer care event by retrieving relevant FAQs and asking the LLM to draft a response.
-    Includes agentic function calling to check for related events when appropriate.
-    Returns: (drafted_reply_text, suggested_status)
-    """
+def handle_customer_care_event_agentic(event) -> tuple[str, str]:
     tool_called = False
     called_args = {}
     found_events_count = 0
@@ -35,6 +33,8 @@ def handle_customer_care_event(event) -> tuple[str, str]:
         nonlocal tool_called, called_args, found_events_count, related_events_info
         tool_called = True
         called_args = {"customer_identifier": customer_identifier, "product_keyword": product_keyword}
+        
+        print(f"--- [Tool Called] find_related_events: customer_identifier={customer_identifier}, product_keyword={product_keyword}")
         
         db = SessionLocal()
         try:
@@ -66,6 +66,7 @@ def handle_customer_care_event(event) -> tuple[str, str]:
                 "urgency": e.urgency,
                 "status": e.status
             } for e in results]
+            print(f"--- [Tool Success] Found {len(serialized)} related events.")
             return serialized
         except Exception as ex:
             print("Tool database lookup error:", ex)
@@ -73,13 +74,11 @@ def handle_customer_care_event(event) -> tuple[str, str]:
         finally:
             db.close()
 
-    # 2. Retrieve relevant context (FAQs) with scores
-    faqs_with_scores = retrieve_relevant_faqs_with_scores(event.raw_content, top_k=3)
-    faqs = [item[1] for item in faqs_with_scores]
-    best_faq_score = faqs_with_scores[0][0] if faqs_with_scores else 0.0
+    # 2. Retrieve FAQs for RAG fallback/context
+    faqs = retrieve_relevant_faqs(event.raw_content, top_k=3)
     context_str = "\n\n".join([f"Q: {faq['question']}\nA: {faq['answer']}" for faq in faqs])
-    
-    # 3. Build the LLM prompt
+
+    # 3. Build the agent prompt
     prompt = f"""
     You are an empathetic, helpful customer care agent for a brand.
     A customer has reached out with the following message:
@@ -136,10 +135,11 @@ def handle_customer_care_event(event) -> tuple[str, str]:
         if response_text:
             break
 
-    # 5. Parse output
+    # 5. Parse output and handle reasoning trace
     drafted_reply = None
     if response_text:
         try:
+            # Clean response text if it has markdown formatting
             cleaned_text = response_text.strip()
             if cleaned_text.startswith("```"):
                 lines = cleaned_text.split("\n")
@@ -153,25 +153,17 @@ def handle_customer_care_event(event) -> tuple[str, str]:
 
     # 6. Fallback if JSON parsing or generation failed
     if not drafted_reply:
+        print("Falling back to standard one-shot generation...")
         fallback_json = generate_json(prompt)
         drafted_reply = fallback_json.get("drafted_reply", "Failed to generate reply.")
 
-    # 7. Determine suggested status using Phase 4 composite scoring
-    llm_confidence = event.confidence if event.confidence is not None else 0.0
-    composite_score = 0.5 * llm_confidence + 0.5 * best_faq_score
-    
-    faq_match_strength = "strong" if best_faq_score >= 0.70 else "weak"
-    composite_confidence_level = "high" if composite_score >= 0.75 else "low"
-    
+    # 7. Determine status
     suggested_status = "pending_approval"
-    
-    # Gating check: high composite confidence + low/medium urgency + no cross-domain pattern
-    is_low_urgency = event.urgency != "high"
-    no_pattern = (found_events_count == 0)
-    has_high_confidence = (composite_confidence_level == "high")
-    
-    if has_high_confidence and is_low_urgency and no_pattern:
-        suggested_status = "ready_to_send"
+    # If the tool was called and found related cross-domain events, ALWAYS require approval (pending_approval)
+    # Otherwise, check the standard criteria
+    if not tool_called or found_events_count == 0:
+        if event.confidence is not None and event.confidence > 0.8 and event.urgency != "high":
+            suggested_status = "ready_to_send"
 
     # 8. Record reasoning trace
     trace_lines = []
@@ -184,23 +176,30 @@ def handle_customer_care_event(event) -> tuple[str, str]:
     else:
         trace_lines.append("Customer Care Agent: Handled directly. Decided related event search was not necessary because the request is routine.")
     
-    pattern_status = "detected" if found_events_count > 0 else "none"
-    if suggested_status == "pending_approval" and has_high_confidence:
-        if found_events_count > 0:
-            override_reason = " (overridden to pending_approval because a cross-domain pattern was detected)"
-        elif event.urgency == "high":
-            override_reason = " (overridden to pending_approval due to high urgency gating)"
-        else:
-            override_reason = ""
-    else:
-        override_reason = ""
-
-    trace_lines.append(
-        f"Composite Gating: LLM confidence: {llm_confidence:.2f}, FAQ match: {faq_match_strength} (score: {best_faq_score:.2f}), "
-        f"urgency: {event.urgency}, cross-domain pattern: {pattern_status} -> composite score: {composite_score:.2f} "
-        f"({composite_confidence_level}){override_reason} -> set suggested status to {suggested_status}."
-    )
-    
+    trace_lines.append(f"Suggested status set to {suggested_status}.")
     event.reasoning_trace = (event.reasoning_trace or "") + "\n" + "\n".join(trace_lines)
 
     return drafted_reply, suggested_status
+
+# Run local test
+if __name__ == "__main__":
+    db = SessionLocal()
+    # Test case A: wrong item in order #12345
+    event_correlated = db.query(models.Event).filter(models.Event.id == 3).first()
+    if event_correlated:
+        print("\n=== Testing Correlated Event (id=3) ===")
+        print("Raw Content:", event_correlated.raw_content)
+        reply, status = handle_customer_care_event_agentic(event_correlated)
+        print("Drafted Reply:", reply[:150] + "...")
+        print("Reasoning Trace:\n", event_correlated.reasoning_trace)
+        
+    # Test case B: change billing address
+    event_routine = db.query(models.Event).filter(models.Event.id == 2).first()
+    if event_routine:
+        print("\n=== Testing Routine Event (id=2) ===")
+        print("Raw Content:", event_routine.raw_content)
+        reply, status = handle_customer_care_event_agentic(event_routine)
+        print("Drafted Reply:", reply[:150] + "...")
+        print("Reasoning Trace:\n", event_routine.reasoning_trace)
+    
+    db.close()

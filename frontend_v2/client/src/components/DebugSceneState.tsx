@@ -2,7 +2,7 @@ import React from 'react';
 import { EnhancedSceneState } from '@/hooks/useScrollytellingStateEnhanced';
 
 export function DebugSceneState({ sceneState }: { sceneState: EnhancedSceneState }) {
-  const sceneNames = ['Hero', 'Problem', 'Solution', 'Architecture', 'Agents', 'Differentiator', 'Resilience', 'Tech Stack', 'CTA'];
+  const sceneNames = ['Hero', 'Problem', 'Solution', 'Agents', 'Business Case', 'CTA'];
 
   return (
     <div style={{

@@ -212,9 +212,9 @@ function CoreEnhanced({ sceneState }: { sceneState: SceneState }) {
       if (sceneState.sceneIndex === 2) {
         rotationSpeed = 0.0008 + sceneState.solutionCoreRotationSpeed * 0.0005;
         brightness = sceneState.solutionCoreBrightness;
-      } else if (sceneState.sceneIndex === 3) {
+      } else if (sceneState.sceneIndex === 3 || sceneState.sceneIndex === 4) {
         brightness = 0.3 + sceneState.differentiatorCoreFlash * 0.55;
-      } else if (sceneState.sceneIndex === 4) {
+      } else if (sceneState.sceneIndex === 5) {
         rotationSpeed = 0.0008 * sceneState.ctaCoreRotationSpeed;
         brightness = 0.3 + sceneState.ctaPathwaysLit * 0.4;
       }
@@ -257,9 +257,9 @@ function PathwayEnhanced({ from, to, color, sceneState, towerIndex }: { from: TH
     opacity = 0.3 * (1 - sceneState.problemTowerDim);
   } else if (sceneState.sceneIndex === 2) {
     opacity = sceneState.solutionPathwayIgnition[towerIndex] || 0.1;
-  } else if (sceneState.sceneIndex === 3) {
+  } else if (sceneState.sceneIndex === 3 || sceneState.sceneIndex === 4) {
     opacity = 0.35 + sceneState.differentiatorPathwayPulse * 0.3;
-  } else if (sceneState.sceneIndex === 4) {
+  } else if (sceneState.sceneIndex === 5) {
     opacity = sceneState.ctaPathwaysLit * 0.65;
   }
 
@@ -418,7 +418,7 @@ function SceneEnhanced({ sceneState }: { sceneState: SceneState }) {
       targetX = focusedTower.x * 0.8;
       targetY = 100;
       targetZ = focusedTower.z * 0.8;
-    } else if (sceneState.sceneIndex === 4) {
+    } else if (sceneState.sceneIndex === 5) {
       targetX = orbitX * (1 - sceneState.ctaCameraTowardCore);
       targetY = 80 - sceneState.ctaCameraTowardCore * 75;
       targetZ = orbitZ * (1 - sceneState.ctaCameraTowardCore);

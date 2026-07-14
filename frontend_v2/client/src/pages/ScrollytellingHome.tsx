@@ -178,7 +178,177 @@ export default function ScrollytellingHome() {
           </div>
         </section>
 
-        {/* SCENE 5: CTA (READY TO GLIMPSE) */}
+        {/* SCENE 5: THE BUSINESS CASE */}
+        <section className="scene business-scene min-h-[400vh] relative px-6 py-20 flex flex-col justify-start" data-section="business">
+          <div className="sticky top-20 max-w-xl self-start z-30 pointer-events-auto text-glass-panel border border-blue-500/30">
+            <h2 className="text-[10px] uppercase font-mono tracking-widest text-blue-400 font-bold mb-2">Scene 05 / Business Case</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-white mb-6">Taking it to the Market</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Unified Business Ops Copilot is a high-margin enterprise-ready platform solving fragmentation for mid-sized brands at the optimal technological convergence point.
+            </p>
+          </div>
+
+          <div className="relative w-full max-w-xl self-end space-y-96 mt-[30vh] pointer-events-auto">
+            {/* Panel 1: Market Opportunity */}
+            <div id="react-business-panel-1" className="glass-card p-8 rounded-3xl relative overflow-hidden transition-all duration-300">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 rounded-bl-full pointer-events-none"></div>
+              <span className="hud-label text-[10px] text-sky-400 font-bold block mb-1.5">Market Opportunity</span>
+              <h4 className="text-xl font-bold text-white mb-6">A Market Ready for This</h4>
+              
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="text-2xl md:text-3xl font-black bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent mb-1">~26M</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-500 font-bold leading-tight">D2C Stores</div>
+                </div>
+                <div className="text-center p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="text-2xl md:text-3xl font-black bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent mb-1">~2.6M</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-500 font-bold leading-tight">Mid-Market</div>
+                </div>
+                <div className="text-center p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="text-2xl md:text-3xl font-black bg-gradient-to-r from-emerald-400 to-lime-300 bg-clip-text text-transparent mb-1">80%+</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-500 font-bold leading-tight">Gross Margin</div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                TAM spans over 26 million stores globally. We target the mid-market segment (2.6M stores) running 3+ tools with high operational fragmentation, delivering high gross margin typical of optimized AI SaaS.
+              </p>
+              <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest block text-center">
+                *Estimates are illustrative, order-of-magnitude figures for pitch purposes.
+              </div>
+            </div>
+
+            {/* Panel 2: Competitive Landscape */}
+            <div id="react-business-panel-2" className="glass-card p-8 rounded-3xl relative overflow-hidden transition-all duration-300">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/10 rounded-bl-full pointer-events-none"></div>
+              <span className="hud-label text-[10px] text-violet-400 font-bold block mb-1.5">Competition</span>
+              <h4 className="text-xl font-bold text-white mb-6">Nobody Else Connects the Dots Natively</h4>
+
+              <div className="space-y-4 mb-4 text-xs">
+                {/* Headers */}
+                <div className="grid grid-cols-12 gap-1 pb-2 border-b border-white/5 text-[9px] uppercase font-bold text-gray-500">
+                  <div className="col-span-5">Solution</div>
+                  <div className="col-span-4 text-center">Correlation</div>
+                  <div className="col-span-3 text-right">SMB Fit</div>
+                </div>
+                
+                {/* Competitor 1 */}
+                <div className="grid grid-cols-12 gap-1 items-center py-1.5">
+                  <div className="col-span-5 text-gray-300 font-bold">Zendesk + Zapier</div>
+                  <div className="col-span-4 text-center">
+                    <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Manual</span>
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Low</span>
+                  </div>
+                </div>
+
+                {/* Competitor 2 */}
+                <div className="grid grid-cols-12 gap-1 items-center py-1.5">
+                  <div className="col-span-5 text-gray-300 font-bold">Freshdesk</div>
+                  <div className="col-span-4 text-center">
+                    <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">None</span>
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">High</span>
+                  </div>
+                </div>
+
+                {/* Competitor 3 */}
+                <div className="grid grid-cols-12 gap-1 items-center py-1.5">
+                  <div className="col-span-5 text-gray-300 font-bold">SFDC + MuleSoft</div>
+                  <div className="col-span-4 text-center">
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Enterprise</span>
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">Poor</span>
+                  </div>
+                </div>
+
+                {/* Copilot */}
+                <div className="grid grid-cols-12 gap-1 items-center py-2.5 px-3 rounded-xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-indigo-500/30">
+                  <div className="col-span-5 text-white font-extrabold">Ops Copilot</div>
+                  <div className="col-span-4 text-center">
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider">Native</span>
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider">Native</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Incumbents isolate support, social, and finance, requiring expensive setups to correlate telemetry. Copilot aggregates events across all domains out-of-the-box.
+              </p>
+            </div>
+
+            {/* Panel 3: Pricing & Why Now */}
+            <div id="react-business-panel-3" className="glass-card p-8 rounded-3xl relative overflow-hidden transition-all duration-300">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full pointer-events-none"></div>
+              <span className="hud-label text-[10px] text-emerald-400 font-bold block mb-1.5">SaaS Pricing Model</span>
+              <h4 className="text-xl font-bold text-white mb-6">Built for Right Now</h4>
+
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
+                  <div className="text-xs font-bold text-gray-400 mb-1">Starter</div>
+                  <div className="text-lg font-black text-white">$49<span className="text-[10px] font-normal text-gray-500">/mo</span></div>
+                  <div className="text-[8px] text-gray-500 uppercase mt-1.5">500 Events</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-center relative">
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.2 rounded-full bg-indigo-500 text-[6px] font-black text-white uppercase tracking-wider">Popular</div>
+                  <div className="text-xs font-bold text-indigo-300 mb-1">Growth</div>
+                  <div className="text-lg font-black text-white">$149<span className="text-[10px] font-normal text-gray-500">/mo</span></div>
+                  <div className="text-[8px] text-indigo-400 uppercase mt-1.5">5k Events</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
+                  <div className="text-xs font-bold text-gray-400 mb-1">Scale</div>
+                  <div className="text-lg font-black text-white">$399<span className="text-[10px] font-normal text-gray-500">/mo</span></div>
+                  <div className="text-[8px] text-gray-500 uppercase mt-1.5">25k Events</div>
+                </div>
+              </div>
+
+              <div className="border-t border-white/5 pt-4">
+                <h5 className="text-[10px] uppercase font-mono tracking-widest text-indigo-400 font-bold mb-2">Why Now?</h5>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  LLM inference costs have dropped roughly an order of magnitude in the last 2 years, while function calling and structured outputs became production-viable. Fusing cross-domain telemetry was impossible at SMB price points until today.
+                </p>
+              </div>
+            </div>
+
+            {/* Panel 4: Go-To-Market */}
+            <div id="react-business-panel-4" className="glass-card p-8 rounded-3xl relative overflow-hidden transition-all duration-300">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full pointer-events-none"></div>
+              <span className="hud-label text-[10px] text-blue-400 font-bold block mb-1.5">Go-To-Market</span>
+              <h4 className="text-xl font-bold text-white mb-4">Starting Where the Pain Is Sharpest</h4>
+              
+              <div className="space-y-4 mb-4">
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[10px] text-blue-400 font-bold font-mono">1</div>
+                  <div className="flex-1">
+                    <h5 className="text-xs font-bold text-white mb-0.5">D2C E-commerce Brands</h5>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">Focus on $1M–$20M revenue brands running Shopify + support box + spreadsheets.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[10px] text-blue-400 font-bold font-mono">2</div>
+                  <div className="flex-1">
+                    <h5 className="text-xs font-bold text-white mb-0.5">Founder-led Outreach</h5>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">Engage directly with founders and operations leaders in e-commerce operator communities.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[10px] text-blue-400 font-bold font-mono">3</div>
+                  <div className="flex-1">
+                    <h5 className="text-xs font-bold text-white mb-0.5">Scaling SMB Ops</h5>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">Expand integration library to Zendesk, HubSpot, and Jira to serve general software SMBs.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SCENE 6: CTA (READY TO GLIMPSE) */}
         <section className="scene cta-scene min-h-screen flex flex-col justify-center items-center py-20 pointer-events-none" data-section="cta">
           <div className="scene-content max-w-2xl text-center space-y-8 pointer-events-auto relative">
             <div className="radial-vignette"></div>
@@ -191,7 +361,7 @@ export default function ScrollytellingHome() {
 
             <div className="pt-4 flex flex-col items-center gap-4">
               {/* Runway CTA Button */}
-              <Link href="/dashboard" className="relative px-12 py-4 bg-gradient-to-r from-violet-600 to-blue-500 text-white font-extrabold uppercase tracking-wider text-xs rounded-full shadow-[0_16px_36px_rgba(139,92,246,0.4)] hover:shadow-[0_20px_52px_rgba(139,92,246,0.6)] hover:scale-[1.02] transition-all overflow-hidden group select-none block w-64 text-center">
+              <Link href="/auth" className="relative px-12 py-4 bg-gradient-to-r from-violet-600 to-blue-500 text-white font-extrabold uppercase tracking-wider text-xs rounded-full shadow-[0_16px_36px_rgba(139,92,246,0.4)] hover:shadow-[0_20px_52px_rgba(139,92,246,0.6)] hover:scale-[1.02] transition-all overflow-hidden group select-none block w-64 text-center">
                 {/* Moving runway yellow line */}
                 <div className="absolute inset-0 bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center overflow-hidden pointer-events-none">
                   <div className="absolute inset-x-0 top-1.5 h-[1px] bg-slate-700/50" />

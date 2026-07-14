@@ -6,13 +6,32 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollytellingHome from "./pages/ScrollytellingHome";
 import Dashboard from "./pages/Dashboard";
+import AuthPage from "./pages/AuthPage";
+import { Redirect } from "wouter";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
+function DashboardGuard() {
+  const isAuth = localStorage.getItem("copilot_session_active") === "true";
+  
+  useEffect(() => {
+    if (!isAuth) {
+      toast.error("Credentials validation required at secure Ingress Gateway.");
+    }
+  }, [isAuth]);
+
+  if (!isAuth) {
+    return <Redirect to="/auth" />;
+  }
+  return <Dashboard />;
+}
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={ScrollytellingHome} />
-      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/dashboard" component={DashboardGuard} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

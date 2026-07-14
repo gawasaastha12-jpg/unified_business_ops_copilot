@@ -3,6 +3,8 @@ import math
 import os
 from google import genai
 from typing import List, Dict
+from app.database import SessionLocal
+from app.models import FAQEmbedding
 
 # In-memory storage for FAQ embeddings
 faq_knowledge_base = []
@@ -26,7 +28,7 @@ def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> List[floa
     return result.embeddings[0].values
 
 def load_and_embed_faqs():
-    """Loads FAQs from JSON and computes embeddings. Run once on startup."""
+    """Loads FAQs from JSON and computes/loads embeddings using FAQEmbedding database cache."""
     global faq_knowledge_base
     if faq_knowledge_base:
         return # Already loaded
@@ -35,13 +37,30 @@ def load_and_embed_faqs():
     with open(faq_path, "r", encoding="utf-8") as f:
         faqs = json.load(f)
         
-    for faq in faqs:
-        combined_text = f"Q: {faq['question']}\nA: {faq['answer']}"
-        embedding = get_embedding(combined_text, task_type="RETRIEVAL_DOCUMENT")
-        faq_knowledge_base.append({
-            "faq": faq,
-            "embedding": embedding
-        })
+    db = SessionLocal()
+    try:
+        # Load cached embeddings from the DB
+        cached = {ce.faq_id: json.loads(ce.embedding_json) for ce in db.query(FAQEmbedding).all()}
+        
+        for idx, faq in enumerate(faqs):
+            combined_text = f"Q: {faq['question']}\nA: {faq['answer']}"
+            faq_id = idx
+            
+            if faq_id in cached:
+                embedding = cached[faq_id]
+            else:
+                embedding = get_embedding(combined_text, task_type="RETRIEVAL_DOCUMENT")
+                ce = FAQEmbedding(faq_id=faq_id, embedding_json=json.dumps(embedding))
+                db.add(ce)
+                db.commit()
+                
+            faq_knowledge_base.append({
+                "faq": faq,
+                "embedding": embedding
+            })
+    finally:
+        db.close()
+        
     print(f"Loaded and embedded {len(faq_knowledge_base)} FAQs.")
 
 def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict]:
@@ -62,3 +81,22 @@ def retrieve_relevant_faqs(query: str, top_k: int = 3) -> List[Dict]:
     
     # Return top_k faqs
     return [item[1] for item in scored_faqs[:top_k]]
+
+def retrieve_relevant_faqs_with_scores(query: str, top_k: int = 3) -> List[tuple]:
+    """Retrieves the top_k most relevant FAQs for a given query along with their similarity scores."""
+    if not faq_knowledge_base:
+        load_and_embed_faqs()
+        
+    query_embedding = get_embedding(query, task_type="RETRIEVAL_QUERY")
+    
+    # Calculate similarities
+    scored_faqs = []
+    for item in faq_knowledge_base:
+        score = cosine_similarity(query_embedding, item["embedding"])
+        scored_faqs.append((score, item["faq"]))
+        
+    # Sort by descending score
+    scored_faqs.sort(key=lambda x: x[0], reverse=True)
+    
+    # Return top_k scored faqs
+    return scored_faqs[:top_k]
