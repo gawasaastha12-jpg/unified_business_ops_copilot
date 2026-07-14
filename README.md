@@ -125,7 +125,7 @@ unified_business_ops_copilot/
 │   │   ├── general.py
 │   │   └── management.py     # Cross-domain digest endpoint
 │   └── frontend_dist/        # Built React app (served by FastAPI)
-├── frontend_v1/
+├── frontend_v2/
 │   └── client/                # React source (Vite)
 ├── requirements.txt
 └── README.md
